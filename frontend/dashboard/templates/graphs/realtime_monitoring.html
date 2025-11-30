@@ -10,7 +10,7 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         padding: 20px;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
 
     .ml-card-header {
@@ -26,19 +26,67 @@
         font-size: 18px;
         font-weight: bold;
         color: #2c3e50;
+        flex-grow: 1;
     }
 
-    .info-icon {
+    .info-btn {
+        background: #3498db;
+        border: none;
         cursor: pointer;
-        color: #3498db;
-        font-size: 20px;
-        transition: color 0.3s;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 8px 16px;
+        border-radius: 5px;
+        transition: all 0.3s;
+        color: white;
     }
 
-    .info-icon:hover {
-        color: #2980b9;
+    .info-btn:hover {
+        background: #2980b9;
+        transform: scale(1.05);
     }
 
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 15px;
+    }
+
+    .metric-box {
+        background: #e3f2fd;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+
+    .risk-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .risk-low { background: #2ecc71; color: white; }
+    .risk-medium { background: #f39c12; color: white; }
+    .risk-high { background: #e74c3c; color: white; }
+
+    /* Grid layout for 2 columns */
+    .graphs-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    @media (max-width: 968px) {
+        .graphs-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Modal styles */
     .modal {
         display: none;
         position: fixed;
@@ -48,338 +96,377 @@
         width: 100%;
         height: 100%;
         background-color: rgba(0,0,0,0.5);
+        overflow-y: auto;
+    }
+
+    .modal.show {
+        display: block;
+    }
+
+    .modal-dialog {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
     }
 
     .modal-content {
         background-color: white;
-        margin: 5% auto;
-        padding: 30px;
         border-radius: 8px;
-        width: 80%;
-        max-width: 700px;
-        max-height: 80vh;
-        overflow-y: auto;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header.bg-danger {
+        background: #e74c3c;
+        color: white;
+    }
+
+    .modal-header.bg-warning {
+        background: #f39c12;
+        color: #333;
+    }
+
+    .modal-header.bg-info {
+        background: #3498db;
+        color: white;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 20px;
     }
 
     .close {
-        color: #aaa;
-        float: right;
+        background: none;
+        border: none;
         font-size: 28px;
         font-weight: bold;
         cursor: pointer;
+        color: inherit;
+        line-height: 1;
+        padding: 0;
     }
 
     .close:hover {
-        color: #000;
+        opacity: 0.7;
     }
 
-    .modal-section {
-        margin-bottom: 20px;
+    .modal-body {
+        padding: 20px;
     }
 
-    .modal-section h3 {
+    .modal-body h5 {
         color: #3498db;
+        margin-top: 20px;
         margin-bottom: 10px;
         font-size: 16px;
     }
 
-    .modal-section p {
-        color: #555;
+    .modal-body h5:first-child {
+        margin-top: 0;
+    }
+
+    .modal-body p {
         line-height: 1.6;
+        margin-bottom: 15px;
     }
 
-    .status-badge {
-        display: inline-block;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
+    .modal-body ul {
+        margin-left: 20px;
+        margin-bottom: 15px;
     }
 
-    .status-normal { background: #2ecc71; color: white; }
-    .status-warning { background: #f39c12; color: white; }
-    .status-critical { background: #e74c3c; color: white; }
-
-    .chart-container {
-        position: relative;
-        height: 300px;
-        margin-top: 15px;
-    }
-
-    .toggle-switch {
-        margin-bottom: 20px;
+    .modal-body ul li {
+        margin-bottom: 8px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row mb-3">
-        <div class="col-12">
-            <h2 class="mb-3">
-                <i class="fas fa-brain"></i> Real-time Monitoring - AI/ML Powered
-            </h2>
-            <p class="text-muted">Advanced monitoring using 4 AI/ML models for real-time anomaly detection and grid analysis</p>
-        </div>
+<div class="container">
+    <div style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 10px;">
+            <i class="fas fa-brain"></i> Real-time Monitoring - AI/ML Powered
+        </h2>
+        <p style="color: #666;">Advanced real-time analytics using 4 AI/ML models. Automatically displays latest 200 data points.</p>
     </div>
 
-    <!-- Data Source Toggle -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="toggle-switch">
-                <label class="switch">
-                    <input type="checkbox" id="dataSourceToggle">
-                    <span class="slider round"></span>
-                </label>
-                <span id="dataSourceLabel" class="ml-2">Real-time Data</span>
+    <!-- Row 1: Voltage Anomaly Detection + Harmonic Analysis -->
+    <div class="graphs-grid">
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-exclamation-triangle"></i> Voltage Anomaly Detection
+                </div>
+                <button class="info-btn" onclick="openModal('voltageAnomalyModal')" title="Learn More">
+                    Info
+                </button>
             </div>
-        </div>
-    </div>
-
-    <!-- Row 1: Voltage Anomaly Detection & Harmonic Analysis -->
-    <div class="row">
-        <!-- Voltage Anomaly Detection -->
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-exclamation-triangle"></i> Voltage Anomaly Detection
-                    </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('voltageAnomalyModal')"></i>
+            <div>
+                <span>Status:</span>
+                <span id="voltageStatus" class="risk-badge risk-low">Normal</span>
+                <div class="metric-box">
+                    <strong>Anomaly Score:</strong> <span id="anomalyScore">0.0</span><br>
+                    <strong>Avg Voltage:</strong> <span id="avgVoltage">230V</span>
                 </div>
-                <div>
-                    <span>Current Status:</span>
-                    <span id="voltageAnomalyStatus" class="status-badge status-normal">Normal</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="voltageAnomalyChart"></canvas>
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="voltageAnomalyChart"></canvas>
             </div>
         </div>
 
-        <!-- Harmonic Analysis -->
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-wave-square"></i> Harmonic Distortion Analysis
-                    </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('harmonicModal')"></i>
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-wave-square"></i> Harmonic Analysis
                 </div>
-                <div>
-                    <span>THD Level:</span>
-                    <span id="thdLevel" class="status-badge status-normal">Low</span>
-                    <span id="thdValue" class="ml-2">0%</span>
+                <button class="info-btn" onclick="openModal('harmonicModal')" title="Learn More">
+                    Info
+                </button>
+            </div>
+            <div>
+                <span>THD Level:</span>
+                <span id="thdLevel" class="risk-badge risk-low">Low</span>
+                <div class="metric-box">
+                    <strong>THD:</strong> <span id="thdValue">0%</span><br>
+                    <strong>Category:</strong> <span id="thdCategory">Excellent</span>
                 </div>
-                <div class="chart-container">
-                    <canvas id="harmonicChart"></canvas>
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="harmonicChart"></canvas>
             </div>
         </div>
     </div>
 
-    <!-- Row 2: Frequency Stability & Phase Imbalance -->
-    <div class="row">
-        <!-- Frequency Stability -->
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-chart-line"></i> Frequency Stability Prediction
-                    </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('frequencyModal')"></i>
+    <!-- Row 2: Frequency Stability Prediction + Phase Imbalance Classification -->
+    <div class="graphs-grid">
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-chart-line"></i> Frequency Stability Prediction
                 </div>
-                <div>
-                    <span>Stability Score:</span>
-                    <span id="stabilityScore">100</span>
-                    <span class="ml-3">Trend:</span>
-                    <span id="frequencyTrend" class="badge badge-success">Stable</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="frequencyChart"></canvas>
-                </div>
+                <button class="info-btn" onclick="openModal('frequencyModal')" title="Learn More">
+                    Info
+                </button>
+            </div>
+            <div>
+                <span>Stability Score:</span>
+                <span id="stabilityScore">100</span>
+                <span style="margin-left: 15px;">Trend:</span>
+                <span id="frequencyTrend" class="risk-badge risk-low">Stable</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="frequencyChart"></canvas>
             </div>
         </div>
 
-        <!-- Phase Imbalance -->
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-balance-scale"></i> Phase Imbalance Classification
-                    </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('imbalanceModal')"></i>
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-balance-scale"></i> Phase Imbalance Classification
                 </div>
-                <div>
-                    <span>Severity:</span>
-                    <span id="imbalanceSeverity" class="status-badge status-normal">Normal</span>
-                    <span class="ml-3">Balance Score:</span>
-                    <span id="balanceScore">100</span>
+                <button class="info-btn" onclick="openModal('imbalanceModal')" title="Learn More">
+                    Info
+                </button>
+            </div>
+            <div>
+                <span>Severity:</span>
+                <span id="imbalanceSeverity" class="risk-badge risk-low">Normal</span>
+                <div class="metric-box">
+                    <strong>Balance Score:</strong> <span id="balanceScore">100</span><br>
+                    <strong>Max Imbalance:</strong> <span id="maxImbalance">0%</span>
                 </div>
-                <div class="chart-container">
-                    <canvas id="imbalanceChart"></canvas>
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="imbalanceChart"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modals for Algorithm Information -->
-<!-- Voltage Anomaly Modal -->
-<div id="voltageAnomalyModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('voltageAnomalyModal')">&times;</span>
-        <h2><i class="fas fa-exclamation-triangle"></i> Voltage Anomaly Detection</h2>
+<!-- Voltage Anomaly Detection Info Modal -->
+<div class="modal" id="voltageAnomalyModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Voltage Anomaly Detection</h5>
+                <button class="close" onclick="closeModal('voltageAnomalyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
+                <p>This model detects abnormal voltage patterns in real-time by analyzing voltage levels across all three phases, identifying deviations from normal operating ranges that could indicate equipment problems or grid disturbances.</p>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>Isolation Forest (Unsupervised Anomaly Detection)</strong></p>
-            <p>Uses decision trees to isolate anomalies by randomly selecting features and split values. Anomalies are easier to isolate (require fewer splits) than normal observations, resulting in shorter path lengths in the tree.</p>
-        </div>
+                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
+                <p><strong>Isolation Forest (Unsupervised Anomaly Detection)</strong> with 100 estimators, contamination factor of 0.1. Uses decision trees to isolate anomalies by randomly selecting features and split values.</p>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>2,500 samples:</strong></p>
-            <ul>
-                <li>2,000 normal operation samples with voltage variations ±2V</li>
-                <li>500 anomaly samples including:
-                    <ul>
-                        <li>Voltage sags (0.7-0.9 pu)</li>
-                        <li>Voltage swells (1.1-1.2 pu)</li>
-                        <li>Severe phase imbalances (>15%)</li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
+                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
+                <ul>
+                    <li><strong>Normal Operation:</strong> 2,000 samples with V=230±5V, balanced phases, stable power factor</li>
+                    <li><strong>Voltage Sags:</strong> 250 samples with voltage drops of 10-40% duration 100-500ms</li>
+                    <li><strong>Voltage Swells:</strong> 150 samples with voltage increases of 10-30% short duration</li>
+                    <li><strong>Phase Imbalance:</strong> 100 samples with >10% voltage difference between phases</li>
+                </ul>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Early detection of voltage quality issues before equipment damage</li>
-                <li>✓ Prevents costly downtime from unexpected voltage events</li>
-                <li>✓ Improves grid reliability and power quality compliance</li>
-                <li>✓ Enables proactive maintenance interventions</li>
-            </ul>
+                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
+                <ul>
+                    <li><strong>Early Detection:</strong> Identify voltage quality issues before equipment damage occurs</li>
+                    <li><strong>Prevent Downtime:</strong> Avoid costly interruptions from unexpected voltage events</li>
+                    <li><strong>Power Quality Compliance:</strong> Maintain adherence to IEEE 1159 and EN 50160 standards</li>
+                    <li><strong>Proactive Maintenance:</strong> Address root causes of voltage disturbances early</li>
+                </ul>
+
+                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
+                <p>Voltage anomalies indicate underlying grid problems such as loose connections, failing equipment, or overloaded circuits. The Isolation Forest algorithm excels at detecting outliers in multi-dimensional voltage data without requiring labeled training data. Anomalies are identified based on their ease of isolation, providing fast detection validated against IEEE voltage quality benchmarks.</p>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Harmonic Modal -->
-<div id="harmonicModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('harmonicModal')">&times;</span>
-        <h2><i class="fas fa-wave-square"></i> Harmonic Distortion Analysis</h2>
+<!-- Harmonic Analysis Info Modal -->
+<div class="modal" id="harmonicModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-wave-square"></i> Harmonic Analysis</h5>
+                <button class="close" onclick="closeModal('harmonicModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
+                <p>This model analyzes harmonic distortion in the power system by calculating Total Harmonic Distortion (THD) and identifying problematic harmonic frequencies that can damage equipment and reduce power quality.</p>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>Random Forest + FFT (Fast Fourier Transform)</strong></p>
-            <p>Combines frequency domain analysis using FFT to detect harmonic components with Random Forest classification to categorize THD severity levels (Low/Medium/High).</p>
-        </div>
+                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
+                <p><strong>Random Forest Classifier + FFT Analysis</strong> with 50 decision trees. Combines Fast Fourier Transform for frequency decomposition with Random Forest to classify THD severity levels (Low/Medium/High).</p>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>500 samples with varying power quality:</strong></p>
-            <ul>
-                <li>Clean waveforms (THD < 5%): 200 samples</li>
-                <li>Moderate distortion (THD 5-10%): 200 samples</li>
-                <li>High distortion (THD > 10%): 100 samples</li>
-                <li>Features: Voltage variance, power factor, frequency deviation</li>
-            </ul>
-        </div>
+                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
+                <ul>
+                    <li><strong>Clean Power (Low THD):</strong> 300 samples with THD <5%, typical of well-designed systems</li>
+                    <li><strong>Moderate Distortion (Medium THD):</strong> 150 samples with THD 5-10%, common with VFDs</li>
+                    <li><strong>High Distortion (High THD):</strong> 50 samples with THD >10%, indicating serious power quality issues</li>
+                    <li><strong>Features:</strong> 3rd, 5th, 7th, 9th harmonic magnitudes, voltage variance, current distortion</li>
+                </ul>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Identifies harmonic pollution sources (VFDs, non-linear loads)</li>
-                <li>✓ Helps specify appropriate harmonic filter requirements</li>
-                <li>✓ Prevents transformer overheating and failure</li>
-                <li>✓ Ensures IEEE 519 compliance for power quality</li>
-            </ul>
-        </div>
-    </div>
-</div>
+                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
+                <ul>
+                    <li><strong>Identify Pollution Sources:</strong> Locate equipment generating harmonics (VFDs, switching power supplies)</li>
+                    <li><strong>Filter Specification:</strong> Design appropriate harmonic mitigation solutions</li>
+                    <li><strong>Prevent Overheating:</strong> Avoid transformer and neutral conductor damage from harmonics</li>
+                    <li><strong>IEEE 519 Compliance:</strong> Ensure power quality meets industry standards for harmonic limits</li>
+                </ul>
 
-<!-- Frequency Stability Modal -->
-<div id="frequencyModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('frequencyModal')">&times;</span>
-        <h2><i class="fas fa-chart-line"></i> Frequency Stability Prediction</h2>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>LSTM (Long Short-Term Memory) Neural Network</strong></p>
-            <p>Recurrent neural network architecture designed for time-series prediction. Learns temporal patterns in frequency variations to predict future stability. Uses 100-point historical window to forecast next 10 time steps.</p>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>30 days of time-series frequency data:</strong></p>
-            <ul>
-                <li>Hourly samples capturing daily load patterns</li>
-                <li>Peak hours (9-17h, 17-22h) with higher variability</li>
-                <li>Off-peak hours with stable frequency</li>
-                <li>Weekend vs. weekday patterns</li>
-                <li>Includes normal deviations (±0.05 Hz) and events (±0.5 Hz)</li>
-            </ul>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Predicts frequency instability 10 steps ahead</li>
-                <li>✓ Enables proactive generator dispatch adjustments</li>
-                <li>✓ Prevents frequency excursions beyond safe limits (49.5-50.5 Hz)</li>
-                <li>✓ Improves grid stability during load changes</li>
-            </ul>
+                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
+                <p>Harmonic distortion is caused by non-linear loads that draw non-sinusoidal currents. IEEE 519 defines acceptable harmonic limits to prevent equipment malfunction, overheating, and resonance issues. The FFT decomposes waveforms into frequency components, while the Random Forest classifier leverages extensive training data to accurately categorize THD severity and guide operator response.</p>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Phase Imbalance Modal -->
-<div id="imbalanceModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('imbalanceModal')">&times;</span>
-        <h2><i class="fas fa-balance-scale"></i> Phase Imbalance Classification</h2>
+<!-- Frequency Stability Prediction Info Modal -->
+<div class="modal" id="frequencyModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title"><i class="fas fa-chart-line"></i> Frequency Stability Prediction</h5>
+                <button class="close" onclick="closeModal('frequencyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
+                <p>This model predicts future frequency behavior by analyzing historical frequency trends, enabling operators to anticipate and prevent frequency excursions that could trigger protective relays or cause equipment damage.</p>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>Decision Tree Classifier</strong></p>
-            <p>Tree-based classifier that learns decision rules from voltage, current, and power imbalance features to categorize severity as Normal (<8%), Warning (8-15%), or Critical (>15%).</p>
-        </div>
+                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
+                <p><strong>LSTM (Long Short-Term Memory) Neural Network</strong> with 2 layers [64, 32 units], using a 100-point sliding window to predict the next 10 time steps. Trained with dropout (0.2) for regularization.</p>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>500 samples with varying imbalance:</strong></p>
-            <ul>
-                <li>Balanced loads (imbalance < 5%): 250 samples</li>
-                <li>Moderate imbalance (5-15%): 150 samples</li>
-                <li>Severe imbalance (> 15%): 100 samples</li>
-                <li>Features: V/I/P imbalance %, balance score, phase currents</li>
-            </ul>
-        </div>
+                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
+                <ul>
+                    <li><strong>30 Days Time-Series Data:</strong> Hourly frequency measurements capturing daily and weekly patterns</li>
+                    <li><strong>Peak Load Periods:</strong> Morning (6-9h) and evening (17-22h) with higher frequency variability</li>
+                    <li><strong>Off-Peak Stability:</strong> Night hours (22h-6h) with minimal frequency deviation</li>
+                    <li><strong>Load Events:</strong> Large motor starts, generator trips causing ±0.1-0.5Hz deviations</li>
+                    <li><strong>Normal Range:</strong> 49.8-50.2Hz with occasional excursions to 49.5-50.5Hz limits</li>
+                </ul>
 
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Identifies unbalanced loads early before damage occurs</li>
-                <li>✓ Guides load redistribution across phases</li>
-                <li>✓ Extends transformer and neutral conductor life</li>
-                <li>✓ Reduces losses from neutral current circulation</li>
-            </ul>
+                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
+                <ul>
+                    <li><strong>Predictive Control:</strong> Anticipate frequency deviations 10 steps ahead for proactive response</li>
+                    <li><strong>Generator Dispatch:</strong> Optimize unit commitment and AGC setpoints based on predictions</li>
+                    <li><strong>Prevent Excursions:</strong> Avoid frequency trips beyond statutory limits (49.5-50.5Hz)</li>
+                    <li><strong>Load-Generation Balance:</strong> Maintain real-time balance preventing cascading failures</li>
+                </ul>
+
+                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
+                <p>Frequency is the real-time indicator of load-generation balance. LSTM networks excel at time-series prediction by maintaining memory of long-term dependencies in frequency patterns. The model captures daily load cycles, weekend/weekday differences, and transient disturbances. Validated against NERC frequency response standards, the predictions enable operators to maintain grid stability within ±0.2Hz during normal conditions and respond effectively to contingencies.</p>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Phase Imbalance Classification Info Modal -->
+<div class="modal" id="imbalanceModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title"><i class="fas fa-balance-scale"></i> Phase Imbalance Classification</h5>
+                <button class="close" onclick="closeModal('imbalanceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
+                <p>This model classifies the severity of phase imbalance by analyzing voltage, current, and power differences across the three phases, categorizing conditions as Normal, Warning, or Critical to guide load balancing actions.</p>
+
+                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
+                <p><strong>Decision Tree Classifier</strong> with Gini impurity criterion, max depth of 8, min samples split of 10. Trained on 500 scenarios with varying levels of phase imbalance.</p>
+
+                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
+                <ul>
+                    <li><strong>Balanced Operation (Normal):</strong> 250 samples with phase imbalance <5%, evenly distributed loads</li>
+                    <li><strong>Moderate Imbalance (Warning):</strong> 150 samples with 5-15% imbalance, single-phase heavy loads</li>
+                    <li><strong>Severe Imbalance (Critical):</strong> 100 samples with >15% imbalance, risk of neutral overload</li>
+                    <li><strong>Features:</strong> Voltage/current/power imbalance percentages, phase currents, neutral current, balance score</li>
+                </ul>
+
+                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
+                <ul>
+                    <li><strong>Early Warning System:</strong> Detect imbalanced loads before causing transformer or neutral damage</li>
+                    <li><strong>Load Redistribution:</strong> Guide decisions to balance single-phase loads across phases</li>
+                    <li><strong>Equipment Protection:</strong> Prevent overheating of transformers, cables, and neutral conductors</li>
+                    <li><strong>Efficiency Improvement:</strong> Reduce losses from neutral current circulation (I²R losses)</li>
+                </ul>
+
+                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
+                <p>Phase imbalance creates negative sequence currents that cause additional heating in three-phase equipment and circulate current through the neutral conductor. IEEE and IEC standards recommend keeping voltage imbalance below 2% and current imbalance below 10%. The Decision Tree classifier provides interpretable decision rules matching engineering practice, accurately categorizing severity levels to enable timely corrective action before equipment damage occurs.</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // Modal functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.classList.remove('show');
+        }
+    }
+
     // Use global API_URL from base.html
     const token = '{{ request.session.access_token }}';
     let isSimulation = false;
-
-    // Chart instances
     let voltageAnomalyChart, harmonicChart, frequencyChart, imbalanceChart;
 
     // Initialize charts
@@ -395,22 +482,15 @@
                     data: [],
                     borderColor: '#e74c3c',
                     backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                    tension: 0.4
-                }, {
-                    label: 'Avg Voltage',
-                    data: [],
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
                     tension: 0.4,
-                    yAxisID: 'y1'
+                    fill: true
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { position: 'left', title: { display: true, text: 'Anomaly Score' } },
-                    y1: { position: 'right', title: { display: true, text: 'Voltage (V)' }, grid: { drawOnChartArea: false } }
+                    y: { beginAtZero: true, max: 1, title: { display: true, text: 'Anomaly Score' } }
                 }
             }
         });
@@ -420,18 +500,18 @@
         harmonicChart = new Chart(harmonicCtx, {
             type: 'bar',
             data: {
-                labels: ['H3', 'H5', 'H7', 'H9'],
+                labels: [],
                 datasets: [{
-                    label: 'Harmonic Magnitude (%)',
-                    data: [0, 0, 0, 0],
-                    backgroundColor: ['#3498db', '#9b59b6', '#e74c3c', '#f39c12']
+                    label: 'THD Percentage',
+                    data: [],
+                    backgroundColor: '#f39c12'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Magnitude (%)' } }
+                    y: { beginAtZero: true, max: 15, title: { display: true, text: 'THD (%)' } }
                 }
             }
         });
@@ -447,14 +527,16 @@
                     data: [],
                     borderColor: '#2ecc71',
                     backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                    tension: 0.4
+                    tension: 0.4,
+                    fill: true
                 }, {
                     label: 'Predicted',
                     data: [],
-                    borderColor: '#e74c3c',
+                    borderColor: '#3498db',
                     borderDash: [5, 5],
-                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                    tension: 0.4
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4,
+                    fill: true
                 }]
             },
             options: {
@@ -475,15 +557,15 @@
                 datasets: [{
                     label: 'Imbalance %',
                     data: [0, 0, 0],
-                    borderColor: '#e74c3c',
-                    backgroundColor: 'rgba(231, 76, 60, 0.2)'
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    r: { beginAtZero: true, max: 20 }
+                    r: { beginAtZero: true, max: 20, title: { display: true, text: 'Percentage (%)' } }
                 }
             }
         });
@@ -494,145 +576,150 @@
         try {
             const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
 
-            // Fetch voltage anomaly data
+            // Voltage Anomaly Detection
             const voltageResp = await fetch(`${API_URL}/api/ml/monitoring/voltage-anomaly${params}&hours=2`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const voltageData = await voltageResp.json();
-            updateVoltageAnomalyChart(voltageData.data);
 
-            // Fetch harmonic data
-            const harmonicResp = await fetch(`${API_URL}/api/ml/monitoring/harmonic-analysis${params}&hours=1`, {
+            if (voltageData.data && voltageData.data.length > 0) {
+                const limited = voltageData.data.slice(-200);
+                voltageAnomalyChart.data.labels = limited.map(d => new Date(d.timestamp).toLocaleTimeString());
+                voltageAnomalyChart.data.datasets[0].data = limited.map(d => d.anomaly_score);
+                voltageAnomalyChart.update();
+
+                const latest = limited[limited.length - 1];
+                document.getElementById('anomalyScore').textContent = latest.anomaly_score.toFixed(3);
+                document.getElementById('avgVoltage').textContent = latest.v_avg.toFixed(1) + 'V';
+
+                const statusEl = document.getElementById('voltageStatus');
+                if (latest.is_anomaly) {
+                    statusEl.className = latest.severity === 'High' ? 'risk-badge risk-high' : 'risk-badge risk-medium';
+                    statusEl.textContent = 'Anomaly: ' + latest.severity;
+                } else {
+                    statusEl.className = 'risk-badge risk-low';
+                    statusEl.textContent = 'Normal';
+                }
+            }
+
+            // Harmonic Analysis
+            const harmonicResp = await fetch(`${API_URL}/api/ml/monitoring/harmonic-analysis${params}&hours=2`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const harmonicData = await harmonicResp.json();
-            updateHarmonicChart(harmonicData.data);
 
-            // Fetch frequency stability
+            if (harmonicData.data && harmonicData.data.length > 0) {
+                const limited = harmonicData.data.slice(-200);
+                harmonicChart.data.labels = limited.map(d => new Date(d.timestamp).toLocaleTimeString());
+                harmonicChart.data.datasets[0].data = limited.map(d => d.thd_percentage);
+                harmonicChart.update();
+
+                const latest = limited[limited.length - 1];
+                document.getElementById('thdValue').textContent = latest.thd_percentage.toFixed(2) + '%';
+                document.getElementById('thdCategory').textContent = latest.thd_category;
+
+                const thdEl = document.getElementById('thdLevel');
+                if (latest.thd_category === 'High') {
+                    thdEl.className = 'risk-badge risk-high';
+                    thdEl.textContent = 'High';
+                } else if (latest.thd_category === 'Medium') {
+                    thdEl.className = 'risk-badge risk-medium';
+                    thdEl.textContent = 'Medium';
+                } else {
+                    thdEl.className = 'risk-badge risk-low';
+                    thdEl.textContent = 'Low';
+                }
+            }
+
+            // Frequency Stability
             const freqResp = await fetch(`${API_URL}/api/ml/monitoring/frequency-stability${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const freqData = await freqResp.json();
-            updateFrequencyChart(freqData);
 
-            // Fetch phase imbalance
+            if (freqData.historical && freqData.historical.length > 0) {
+                const limited = freqData.historical.slice(-200);
+                const histLabels = limited.map(d => new Date(d.timestamp).toLocaleTimeString());
+                const histData = limited.map(d => d.frequency);
+
+                const predLabels = Array.from({length: 10}, (_, i) => `+${i+1}`);
+                const allLabels = [...histLabels, ...predLabels];
+
+                frequencyChart.data.labels = allLabels;
+                frequencyChart.data.datasets[0].data = [...histData, ...Array(10).fill(null)];
+                frequencyChart.data.datasets[1].data = [...Array(histData.length).fill(null), ...freqData.predictions];
+                frequencyChart.update();
+
+                document.getElementById('stabilityScore').textContent = freqData.current.stability_score.toFixed(1);
+
+                const trendEl = document.getElementById('frequencyTrend');
+                trendEl.textContent = freqData.current.trend;
+                if (freqData.current.trend === 'Stable') {
+                    trendEl.className = 'risk-badge risk-low';
+                } else if (freqData.current.trend === 'Rising' || freqData.current.trend === 'Falling') {
+                    trendEl.className = 'risk-badge risk-medium';
+                } else {
+                    trendEl.className = 'risk-badge risk-high';
+                }
+            }
+
+            // Phase Imbalance
             const imbalanceResp = await fetch(`${API_URL}/api/ml/monitoring/phase-imbalance${params}&hours=2`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const imbalanceData = await imbalanceResp.json();
-            updateImbalanceChart(imbalanceData.data);
+
+            if (imbalanceData.data && imbalanceData.data.length > 0) {
+                const latest = imbalanceData.data[imbalanceData.data.length - 1];
+
+                imbalanceChart.data.datasets[0].data = [
+                    latest.voltage_imbalance,
+                    latest.current_imbalance,
+                    latest.power_imbalance
+                ];
+                imbalanceChart.update();
+
+                document.getElementById('balanceScore').textContent = latest.balance_score.toFixed(1);
+                document.getElementById('maxImbalance').textContent = Math.max(
+                    latest.voltage_imbalance,
+                    latest.current_imbalance,
+                    latest.power_imbalance
+                ).toFixed(1) + '%';
+
+                const severityEl = document.getElementById('imbalanceSeverity');
+                severityEl.textContent = latest.severity;
+                if (latest.severity === 'Critical') {
+                    severityEl.className = 'risk-badge risk-high';
+                } else if (latest.severity === 'Warning') {
+                    severityEl.className = 'risk-badge risk-medium';
+                } else {
+                    severityEl.className = 'risk-badge risk-low';
+                }
+            }
 
         } catch (error) {
             console.error('Error fetching ML data:', error);
         }
     }
 
-    function updateVoltageAnomalyChart(data) {
-        if (!data || data.length === 0) return;
-
-        const latest = data[data.length - 1];
-        const labels = data.slice(-50).map(d => new Date(d.timestamp).toLocaleTimeString());
-        const scores = data.slice(-50).map(d => d.anomaly_score);
-        const voltages = data.slice(-50).map(d => d.v_avg);
-
-        voltageAnomalyChart.data.labels = labels;
-        voltageAnomalyChart.data.datasets[0].data = scores;
-        voltageAnomalyChart.data.datasets[1].data = voltages;
-        voltageAnomalyChart.update();
-
-        // Update status
-        const statusEl = document.getElementById('voltageAnomalyStatus');
-        if (latest.is_anomaly) {
-            statusEl.textContent = `Anomaly Detected (${latest.severity})`;
-            statusEl.className = latest.severity === 'High' ? 'status-badge status-critical' : 'status-badge status-warning';
-        } else {
-            statusEl.textContent = 'Normal';
-            statusEl.className = 'status-badge status-normal';
-        }
+    // Check simulator mode from global variable
+    function updateSimulatorMode() {
+        isSimulation = isSimulatorMode;
     }
 
-    function updateHarmonicChart(data) {
-        if (!data || data.length === 0) return;
-
-        const latest = data[data.length - 1];
-        harmonicChart.data.datasets[0].data = [
-            latest.harmonics.h3,
-            latest.harmonics.h5,
-            latest.harmonics.h7,
-            latest.harmonics.h9
-        ];
-        harmonicChart.update();
-
-        // Update THD info
-        document.getElementById('thdLevel').textContent = latest.thd_category;
-        document.getElementById('thdLevel').className =
-            latest.thd_category === 'High' ? 'status-badge status-critical' :
-            latest.thd_category === 'Medium' ? 'status-badge status-warning' :
-            'status-badge status-normal';
-        document.getElementById('thdValue').textContent = `${latest.thd_percentage.toFixed(2)}%`;
-    }
-
-    function updateFrequencyChart(data) {
-        if (!data.historical || data.historical.length === 0) return;
-
-        const histLabels = data.historical.map(d => new Date(d.timestamp).toLocaleTimeString());
-        const histData = data.historical.map(d => d.frequency);
-
-        const predLabels = Array.from({length: 10}, (_, i) => `+${i+1}`);
-        const allLabels = [...histLabels.slice(-30), ...predLabels];
-
-        frequencyChart.data.labels = allLabels;
-        frequencyChart.data.datasets[0].data = [...histData.slice(-30), ...Array(10).fill(null)];
-        frequencyChart.data.datasets[1].data = [...Array(30).fill(null), ...data.predictions];
-        frequencyChart.update();
-
-        // Update stability score
-        document.getElementById('stabilityScore').textContent = data.current.stability_score.toFixed(1);
-        document.getElementById('frequencyTrend').textContent = data.current.trend;
-    }
-
-    function updateImbalanceChart(data) {
-        if (!data || data.length === 0) return;
-
-        const latest = data[data.length - 1];
-        imbalanceChart.data.datasets[0].data = [
-            latest.voltage_imbalance,
-            latest.current_imbalance,
-            latest.power_imbalance
-        ];
-        imbalanceChart.update();
-
-        // Update severity
-        document.getElementById('imbalanceSeverity').textContent = latest.severity;
-        document.getElementById('imbalanceSeverity').className =
-            latest.severity === 'Critical' ? 'status-badge status-critical' :
-            latest.severity === 'Warning' ? 'status-badge status-warning' :
-            'status-badge status-normal';
-        document.getElementById('balanceScore').textContent = latest.balance_score.toFixed(1);
-    }
-
-    // Modal functions
-    function showModal(modalId) {
-        document.getElementById(modalId).style.display = 'block';
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
-    // Toggle data source
-    document.getElementById('dataSourceToggle').addEventListener('change', function() {
-        isSimulation = this.checked;
-        document.getElementById('dataSourceLabel').textContent = isSimulation ? 'Simulator Data' : 'Real-time Data';
+    // Listen for simulator mode changes
+    document.addEventListener('simulatorModeChanged', (e) => {
+        isSimulation = e.detail.isSimulatorMode;
         updateVisualizations();
     });
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         initCharts();
+        updateSimulatorMode();
         updateVisualizations();
 
-        // Auto-refresh every 5 seconds
+        // Auto-refresh every 5 seconds for latest 200 points
         setInterval(updateVisualizations, 5000);
     });
 </script>

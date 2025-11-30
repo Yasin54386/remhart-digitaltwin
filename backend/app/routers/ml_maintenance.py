@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from ..database import get_db
 from ..models.db_models import DateTimeTable
 from ..services.ml_inference_engine import ml_inference_engine
-from ..auth import get_current_user
+from ..utils.security import get_current_user
 
 router = APIRouter(prefix="/api/ml/maintenance", tags=["ML Maintenance"])
 

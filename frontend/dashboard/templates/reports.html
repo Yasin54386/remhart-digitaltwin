@@ -295,7 +295,7 @@
             <h3>2. Data Source</h3>
             <div class="radio-group">
                 <label class="radio-option">
-                    <input type="radio" name="dataSource" value="realtime" checked />
+                    <input type="radio" name="dataSource" value="realtime" />
                     <span>Real-time Data</span>
                 </label>
                 <label class="radio-option">
@@ -303,7 +303,7 @@
                     <span>Simulation Data</span>
                 </label>
                 <label class="radio-option">
-                    <input type="radio" name="dataSource" value="all" />
+                    <input type="radio" name="dataSource" value="all" checked />
                     <span>All Data</span>
                 </label>
             </div>
@@ -411,11 +411,10 @@
 <script>
     // Initialize datetime inputs with current time
     function initializeDateInputs() {
-        const now = new Date();
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-        document.getElementById('startTime').value = formatDateTimeLocal(yesterday);
-        document.getElementById('endTime').value = formatDateTimeLocal(now);
+        // Start with empty dates (All Time) for better first experience
+        // Users can select a preset or specific range as needed
+        document.getElementById('startTime').value = '';
+        document.getElementById('endTime').value = '';
     }
 
     function formatDateTimeLocal(date) {

@@ -87,7 +87,7 @@ async def get_equipment_failure_prediction(
             'timestamp': point.timestamp,
             'failure_probability': failure['failure_probability'],
             'risk_level': failure['risk_level'],
-            'estimated_days_to_failure': failure['estimated_days_to_failure'],
+            'time_to_failure': failure['estimated_days_to_failure'],
             'contributing_factors': failure['contributing_factors']
         })
 
@@ -95,7 +95,7 @@ async def get_equipment_failure_prediction(
         "algorithm": "XGBoost (Gradient Boosting)",
         "training_dataset": "Synthetic data based on equipment stress indicators: high current, voltage/current variance, poor power factor, imbalances",
         "benefits": "Prevents unexpected equipment failures, optimizes maintenance scheduling, reduces downtime costs",
-        "data": results
+        "predictions": results
     }
 
 
@@ -135,7 +135,7 @@ async def get_overload_risk_classification(
         results.append({
             'timestamp': point.timestamp,
             'risk_level': overload['risk_level'],
-            'current_load_pct': overload['current_load_pct'],
+            'load_percentage': overload['current_load_pct'],
             'peak_phase': overload['peak_phase'],
             'mitigation_needed': overload['mitigation_needed']
         })
@@ -144,7 +144,7 @@ async def get_overload_risk_classification(
         "algorithm": "SVM (Support Vector Machine)",
         "training_dataset": "500 samples with varying load levels from 50% to 200% of rated capacity",
         "benefits": "Prevents equipment overheating and damage, enables proactive load shedding decisions",
-        "data": results
+        "predictions": results
     }
 
 
@@ -184,7 +184,7 @@ async def get_power_quality_index(
         results.append({
             'timestamp': point.timestamp,
             'pqi_score': pqi['pqi_score'],
-            'grade': pqi['grade'],
+            'quality_grade': pqi['grade'],
             'voltage_quality': pqi['voltage_quality'],
             'frequency_quality': pqi['frequency_quality'],
             'power_factor_quality': pqi['pf_quality_score'],
@@ -195,7 +195,7 @@ async def get_power_quality_index(
         "algorithm": "Neural Network (Multi-layer Perceptron)",
         "training_dataset": "Comprehensive dataset combining voltage quality (40%), frequency quality (30%), and power factor quality (30%) metrics",
         "benefits": "Provides single metric for overall power quality, helps prioritize improvement investments",
-        "data": results
+        "predictions": results
     }
 
 
@@ -244,5 +244,5 @@ async def get_voltage_sag_prediction(
         "algorithm": "Random Forest Classifier",
         "training_dataset": "Data including normal conditions and voltage sag events (< 0.9 pu voltage)",
         "benefits": "Enables installation of protective devices before sags occur, protects sensitive equipment",
-        "data": results
+        "predictions": results
     }

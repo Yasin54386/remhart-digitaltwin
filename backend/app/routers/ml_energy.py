@@ -155,7 +155,7 @@ async def get_energy_loss_estimation(
     }
 
 
-@router.get("/power-flow-optimization")
+@router.get("/power-flow")
 async def get_power_flow_optimization(
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),

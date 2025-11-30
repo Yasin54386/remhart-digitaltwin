@@ -567,20 +567,36 @@
 
     // Fetch and update all visualizations
     async function updateVisualizations() {
+        console.log('=== Update Visualizations Started ===');
+        console.log('API_URL:', API_URL);
+        console.log('Token:', token ? 'Present' : 'Missing');
+        console.log('isSimulation:', isSimulation);
+
         try {
             const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
+            console.log('Query params:', params);
 
             // Equipment Failure
-            const failureResp = await fetch(`${API_URL}/api/ml/maintenance/equipment-failure${params}&hours=2`, {
+            const failureUrl = `${API_URL}/api/ml/maintenance/equipment-failure${params}&hours=2`;
+            console.log('Fetching Equipment Failure from:', failureUrl);
+
+            const failureResp = await fetch(failureUrl, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            console.log('Equipment Failure Response Status:', failureResp.status);
+
             const failureData = await failureResp.json();
+            console.log('Equipment Failure Data:', failureData);
 
             if (failureData.predictions && failureData.predictions.length > 0) {
+                console.log('Processing', failureData.predictions.length, 'predictions');
                 const limited = failureData.predictions.slice(-200);
+                console.log('Limited to', limited.length, 'predictions');
+
                 failureChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
                 failureChart.data.datasets[0].data = limited.map(p => p.failure_probability);
                 failureChart.update();
+                console.log('Equipment Failure chart updated');
 
                 const latest = limited[limited.length - 1];
                 document.getElementById('failureProb').textContent = latest.failure_probability.toFixed(1) + '%';
@@ -597,6 +613,9 @@
                     riskEl.className = 'risk-badge risk-low';
                     riskEl.textContent = 'Low';
                 }
+            } else {
+                console.warn('No predictions data received for Equipment Failure');
+                console.log('failureData structure:', Object.keys(failureData));
             }
 
             // Overload Risk
@@ -675,7 +694,11 @@
             }
 
         } catch (error) {
-            console.error('Error fetching ML data:', error);
+            console.error('=== ERROR FETCHING ML DATA ===');
+            console.error('Error type:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Full error:', error);
+            console.error('Stack trace:', error.stack);
         }
     }
 

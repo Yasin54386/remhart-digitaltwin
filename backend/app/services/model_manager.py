@@ -104,25 +104,29 @@ class ModelManager:
         if model is None:
             return self._mock_voltage_anomaly(features)
 
-        # Extract relevant features
-        X = np.array([[
-            features['v_avg'],
-            features['v_variance'],
-            features['v_imbalance_pct'],
-            features['v_deviation_pct'],
-            features['v_rate_of_change']
-        ]])
+        try:
+            # Extract relevant features
+            X = np.array([[
+                features['v_avg'],
+                features['v_variance'],
+                features['v_imbalance_pct'],
+                features['v_deviation_pct'],
+                features['v_rate_of_change']
+            ]])
 
-        # Predict (-1 = anomaly, 1 = normal)
-        prediction = model.predict(X)[0]
-        anomaly_score = model.score_samples(X)[0]
+            # Predict (-1 = anomaly, 1 = normal)
+            prediction = model.predict(X)[0]
+            anomaly_score = model.score_samples(X)[0]
 
-        return {
-            'is_anomaly': prediction == -1,
-            'anomaly_score': float(anomaly_score),
-            'confidence': abs(float(anomaly_score)),
-            'severity': self._get_severity(anomaly_score)
-        }
+            return {
+                'is_anomaly': prediction == -1,
+                'anomaly_score': float(anomaly_score),
+                'confidence': abs(float(anomaly_score)),
+                'severity': self._get_severity(anomaly_score)
+            }
+        except Exception as e:
+            logger.warning(f"Voltage anomaly prediction failed, using mock: {e}")
+            return self._mock_voltage_anomaly(features)
 
     def analyze_harmonics(self, features: Dict) -> Dict[str, Any]:
         """
@@ -235,23 +239,27 @@ class ModelManager:
         if model is None:
             return self._mock_equipment_failure(features)
 
-        X = np.array([[
-            features['i_avg'],
-            features['i_variance'],
-            features['v_variance'],
-            features['power_factor'],
-            features['i_spike_detected'],
-            features['v_imbalance_pct']
-        ]])
+        try:
+            X = np.array([[
+                features['i_avg'],
+                features['i_variance'],
+                features['v_variance'],
+                features['power_factor'],
+                features['i_spike_detected'],
+                features['v_imbalance_pct']
+            ]])
 
-        failure_prob = model.predict_proba(X)[0][1]
+            failure_prob = model.predict_proba(X)[0][1]
 
-        return {
-            'failure_probability': float(failure_prob),
-            'risk_level': self._get_risk_level(failure_prob),
-            'estimated_days_to_failure': self._estimate_ttf(failure_prob),
-            'contributing_factors': self._identify_failure_factors(features)
-        }
+            return {
+                'failure_probability': float(failure_prob),
+                'risk_level': self._get_risk_level(failure_prob),
+                'estimated_days_to_failure': self._estimate_ttf(failure_prob),
+                'contributing_factors': self._identify_failure_factors(features)
+            }
+        except Exception as e:
+            logger.warning(f"Model prediction failed, using mock: {e}")
+            return self._mock_equipment_failure(features)
 
     def classify_overload_risk(self, features: Dict) -> Dict[str, Any]:
         """

@@ -28,6 +28,7 @@ from app.utils.security import create_default_users
 
 # Import routers
 from app.routers import auth, grid_data, websocket_router, simulator, reports
+from app.routers import ml_monitoring, ml_maintenance, ml_energy, ml_decision
 
 # ============================================
 # Application Lifecycle Management
@@ -163,6 +164,18 @@ app.include_router(
     prefix="/api/reports",
     tags=["Reports"]
 )
+
+# ML Monitoring routes
+app.include_router(ml_monitoring.router)
+
+# ML Maintenance routes
+app.include_router(ml_maintenance.router)
+
+# ML Energy routes
+app.include_router(ml_energy.router)
+
+# ML Decision routes
+app.include_router(ml_decision.router)
 
 
 # ============================================

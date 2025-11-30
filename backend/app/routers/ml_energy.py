@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from ..database import get_db
 from ..models.db_models import DateTimeTable
 from ..services.ml_inference_engine import ml_inference_engine
-from ..utils.security import get_current_user
+from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/energy", tags=["ML Energy"])
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/ml/energy", tags=["ML Energy"])
 @router.get("/latest")
 async def get_latest_energy_insights(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """Get latest energy flow ML insights"""
@@ -54,7 +54,7 @@ async def get_latest_energy_insights(
 async def get_load_forecasting(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -110,7 +110,7 @@ async def get_load_forecasting(
 async def get_energy_loss_estimation(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -158,7 +158,7 @@ async def get_energy_loss_estimation(
 @router.get("/power-flow-optimization")
 async def get_power_flow_optimization(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -206,7 +206,7 @@ async def get_power_flow_optimization(
 async def get_demand_response_potential(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """

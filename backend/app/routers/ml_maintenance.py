@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from ..database import get_db
 from ..models.db_models import DateTimeTable
 from ..services.ml_inference_engine import ml_inference_engine
-from ..utils.security import get_current_user
+from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/maintenance", tags=["ML Maintenance"])
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/ml/maintenance", tags=["ML Maintenance"])
 @router.get("/latest")
 async def get_latest_maintenance_insights(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """Get latest predictive maintenance ML insights"""
@@ -54,7 +54,7 @@ async def get_latest_maintenance_insights(
 async def get_equipment_failure_prediction(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -103,7 +103,7 @@ async def get_equipment_failure_prediction(
 async def get_overload_risk_classification(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -152,7 +152,7 @@ async def get_overload_risk_classification(
 async def get_power_quality_index(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -203,7 +203,7 @@ async def get_power_quality_index(
 async def get_voltage_sag_prediction(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """

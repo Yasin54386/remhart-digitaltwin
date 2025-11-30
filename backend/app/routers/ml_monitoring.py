@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from ..database import get_db
 from ..models.db_models import DateTimeTable
 from ..services.ml_inference_engine import ml_inference_engine
-from ..utils.security import get_current_user
+from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/monitoring", tags=["ML Monitoring"])
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/ml/monitoring", tags=["ML Monitoring"])
 @router.get("/latest")
 async def get_latest_monitoring_insights(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -61,7 +61,7 @@ async def get_latest_monitoring_insights(
 async def get_voltage_anomaly_detection(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -110,7 +110,7 @@ async def get_voltage_anomaly_detection(
 async def get_harmonic_analysis(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -158,7 +158,7 @@ async def get_harmonic_analysis(
 @router.get("/frequency-stability")
 async def get_frequency_stability(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -216,7 +216,7 @@ async def get_frequency_stability(
 async def get_phase_imbalance(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """

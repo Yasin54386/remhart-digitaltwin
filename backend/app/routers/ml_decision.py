@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from ..database import get_db
 from ..models.db_models import DateTimeTable
 from ..services.ml_inference_engine import ml_inference_engine
-from ..utils.security import get_current_user
+from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/decision", tags=["ML Decision"])
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/ml/decision", tags=["ML Decision"])
 @router.get("/latest")
 async def get_latest_decision_insights(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """Get latest decision-making ML insights"""
@@ -54,7 +54,7 @@ async def get_latest_decision_insights(
 async def get_reactive_power_compensation(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -104,7 +104,7 @@ async def get_reactive_power_compensation(
 async def get_load_balancing_optimization(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -162,7 +162,7 @@ async def get_load_balancing_optimization(
 async def get_grid_stability_scoring(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -211,7 +211,7 @@ async def get_grid_stability_scoring(
 async def get_optimal_dispatch_advisory(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_current_user),
+    current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """

@@ -36,6 +36,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme for token-based authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
+# Optional OAuth2 scheme (doesn't raise error if token is missing)
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+
 
 # ============================================
 # Password Hashing Functions
@@ -151,6 +154,34 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
     
     return payload
+
+
+async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme_optional)):
+    """
+    Get current user if authenticated, otherwise return None.
+    Use this for endpoints that work with or without authentication.
+
+    Args:
+        token: Optional JWT token from Authorization header
+
+    Returns:
+        dict | None: User information from token, or None if not authenticated
+
+    Usage:
+        @app.get("/public-or-private")
+        async def flexible_route(current_user = Depends(get_optional_user)):
+            if current_user:
+                return {"message": f"Hello {current_user['sub']}"}
+            return {"message": "Hello anonymous"}
+    """
+    if not token:
+        return None
+
+    try:
+        payload = verify_token(token)
+        return payload
+    except HTTPException:
+        return None
 
 
 def check_role(required_role: str):

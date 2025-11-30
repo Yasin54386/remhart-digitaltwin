@@ -5,6 +5,9 @@
     <a href="{% url 'dashboard:simulator' %}" {% if request.resolver_match.url_name == 'simulator' %}class="active"{% endif %}>
         Simulator
     </a>
+    <a href="{% url 'dashboard:reports' %}" {% if request.resolver_match.url_name == 'reports' %}class="active"{% endif %}>
+        Reports
+    </a>
     <a href="{% url 'dashboard:predictive_maintenance' %}" {% if request.resolver_match.url_name == 'predictive_maintenance' %}class="active"{% endif %}>
         Predictive Maintenance
     </a>

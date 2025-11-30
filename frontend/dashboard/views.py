@@ -174,3 +174,15 @@ def simulator(request):
         'api_url': FASTAPI_BASE_URL
     }
     return render(request, 'simulator.html', context)
+
+@require_login
+def reports(request):
+    """
+    Reports and data export page.
+    """
+    context = {
+        'user': request.session.get('user', {}),
+        'ws_url': FASTAPI_WS_URL,
+        'api_url': FASTAPI_BASE_URL
+    }
+    return render(request, 'reports.html', context)

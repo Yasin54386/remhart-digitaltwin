@@ -20,7 +20,10 @@ urlpatterns = [
     
     # Simulator
     path('simulator/', views.simulator, name='simulator'),
-    
+
+    # Reports
+    path('reports/', views.reports, name='reports'),
+
     # Graph visualization pages
     path('predictive-maintenance/', views.predictive_maintenance, name='predictive_maintenance'),
     path('energy-flow/', views.energy_flow, name='energy_flow'),

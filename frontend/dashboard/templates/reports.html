@@ -1,0 +1,602 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reports - REMHART{% endblock %}
+
+{% block page_title %}Data Reports & Export{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .filter-panel {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+
+    .filter-section {
+        margin-bottom: 25px;
+    }
+
+    .filter-section h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-input {
+        flex: 1;
+        min-width: 200px;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    .quick-presets {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .preset-btn {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+        background: #bdc3c7;
+    }
+
+    .preset-btn.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 20px;
+    }
+
+    .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .radio-option input[type="radio"] {
+        cursor: pointer;
+    }
+
+    .checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .checkbox-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .checkbox-option input[type="checkbox"] {
+        cursor: pointer;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: #27ae60;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #229954;
+    }
+
+    .btn-secondary {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #2980b9;
+    }
+
+    .btn-outline {
+        background: white;
+        color: #555;
+        border: 2px solid #ddd;
+    }
+
+    .btn-outline:hover {
+        border-color: #999;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .preview-panel {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        display: none;
+    }
+
+    .preview-panel.show {
+        display: block;
+    }
+
+    .stats-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+        padding-bottom: 25px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .stat-box {
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #999;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #27ae60;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        max-height: 400px;
+        overflow-y: auto;
+        display: block;
+    }
+
+    .data-table thead {
+        position: sticky;
+        top: 0;
+        background: #34495e;
+        color: white;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .alert {
+        padding: 15px 20px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+
+    .alert-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border-left: 4px solid #17a2b8;
+    }
+
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border-left: 4px solid #ffc107;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+
+    .loading.show {
+        display: block;
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+        <h2 style="margin-bottom: 25px; color: #333;">📊 Generate Report</h2>
+
+        <!-- Time Range -->
+        <div class="filter-section">
+            <h3>1. Select Time Range</h3>
+            <div class="filter-group">
+                <input type="datetime-local" id="startTime" class="filter-input" />
+                <span>to</span>
+                <input type="datetime-local" id="endTime" class="filter-input" />
+            </div>
+            <div class="quick-presets">
+                <button class="preset-btn" onclick="setPreset('24h')">Last 24 Hours</button>
+                <button class="preset-btn" onclick="setPreset('7d')">Last 7 Days</button>
+                <button class="preset-btn" onclick="setPreset('30d')">Last 30 Days</button>
+                <button class="preset-btn" onclick="setPreset('all')">All Time</button>
+            </div>
+        </div>
+
+        <!-- Data Source -->
+        <div class="filter-section">
+            <h3>2. Data Source</h3>
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" name="dataSource" value="realtime" checked />
+                    <span>Real-time Data</span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="dataSource" value="simulation" />
+                    <span>Simulation Data</span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="dataSource" value="all" />
+                    <span>All Data</span>
+                </label>
+            </div>
+            <div id="simulationSelect" style="margin-top: 15px; display: none;">
+                <select id="simulationId" class="filter-input" style="max-width: 400px;">
+                    <option value="">All Simulations</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="filter-section">
+            <h3>3. Parameters to Include</h3>
+            <div class="checkbox-group">
+                <label class="checkbox-option">
+                    <input type="checkbox" name="params" value="voltage" checked />
+                    <span>Voltage</span>
+                </label>
+                <label class="checkbox-option">
+                    <input type="checkbox" name="params" value="current" checked />
+                    <span>Current</span>
+                </label>
+                <label class="checkbox-option">
+                    <input type="checkbox" name="params" value="frequency" checked />
+                    <span>Frequency</span>
+                </label>
+                <label class="checkbox-option">
+                    <input type="checkbox" name="params" value="power" checked />
+                    <span>Power</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-outline" onclick="previewReport()">
+                👁️ Preview Report
+            </button>
+            <button class="btn btn-primary" onclick="downloadReport('excel')">
+                📊 Download Excel
+            </button>
+            <button class="btn btn-secondary" onclick="downloadReport('csv')">
+                📄 Download CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading" id="loadingIndicator">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: #666;">Generating report...</p>
+    </div>
+
+    <!-- Preview Panel -->
+    <div class="preview-panel" id="previewPanel">
+        <h2 style="margin-bottom: 20px; color: #333;">📋 Report Preview</h2>
+
+        <div class="alert alert-info">
+            <strong>Report Summary</strong> - Showing preview of filtered data
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="stats-summary" id="statsSummary">
+            <div class="stat-box">
+                <div class="stat-label">Total Records</div>
+                <div class="stat-value" id="totalRecords">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Voltage (V)</div>
+                <div class="stat-value" id="avgVoltage">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Current (A)</div>
+                <div class="stat-value" id="avgCurrent">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Power (W)</div>
+                <div class="stat-value" id="avgPower">--</div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="previewTable">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Voltage (V)</th>
+                        <th>Current (A)</th>
+                        <th>Frequency (Hz)</th>
+                        <th>Power (W)</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody id="previewTableBody">
+                    <!-- Data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize datetime inputs with current time
+    function initializeDateInputs() {
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        document.getElementById('startTime').value = formatDateTimeLocal(yesterday);
+        document.getElementById('endTime').value = formatDateTimeLocal(now);
+    }
+
+    function formatDateTimeLocal(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    // Set time preset
+    function setPreset(preset) {
+        const now = new Date();
+        let startDate;
+
+        // Remove active class from all preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+
+        switch(preset) {
+            case '24h':
+                startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                event.target.classList.add('active');
+                break;
+            case '7d':
+                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                event.target.classList.add('active');
+                break;
+            case '30d':
+                startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                event.target.classList.add('active');
+                break;
+            case 'all':
+                document.getElementById('startTime').value = '';
+                document.getElementById('endTime').value = '';
+                event.target.classList.add('active');
+                return;
+        }
+
+        document.getElementById('startTime').value = formatDateTimeLocal(startDate);
+        document.getElementById('endTime').value = formatDateTimeLocal(now);
+    }
+
+    // Toggle simulation select visibility
+    document.querySelectorAll('input[name="dataSource"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const simSelect = document.getElementById('simulationSelect');
+            simSelect.style.display = e.target.value === 'simulation' ? 'block' : 'none';
+        });
+    });
+
+    // Get filter parameters
+    function getFilterParams() {
+        const startTime = document.getElementById('startTime').value;
+        const endTime = document.getElementById('endTime').value;
+        const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
+        const simulationId = document.getElementById('simulationId').value;
+
+        const params = new URLSearchParams();
+
+        if (startTime) params.append('start_time', new Date(startTime).toISOString());
+        if (endTime) params.append('end_time', new Date(endTime).toISOString());
+
+        if (dataSource === 'realtime') {
+            params.append('is_simulation', 'false');
+        } else if (dataSource === 'simulation') {
+            params.append('is_simulation', 'true');
+            if (simulationId) params.append('simulation_id', simulationId);
+        }
+
+        return params;
+    }
+
+    // Preview report
+    async function previewReport() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const previewPanel = document.getElementById('previewPanel');
+
+        try {
+            loadingIndicator.classList.add('show');
+            previewPanel.classList.remove('show');
+
+            const params = getFilterParams();
+            params.append('limit', '100'); // Preview limit
+
+            const headers = {};
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const response = await fetch(`${API_URL}/api/reports/preview?${params}`, { headers });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch preview');
+            }
+
+            const result = await response.json();
+
+            // Update statistics
+            const summary = result.summary;
+            document.getElementById('totalRecords').textContent = summary.total_records || 0;
+            document.getElementById('avgVoltage').textContent = summary.voltage_avg || '--';
+            document.getElementById('avgCurrent').textContent = summary.current_avg || '--';
+            document.getElementById('avgPower').textContent = summary.power_avg || '--';
+
+            // Update table
+            const tbody = document.getElementById('previewTableBody');
+            tbody.innerHTML = '';
+
+            result.data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(row.timestamp).toLocaleString()}</td>
+                    <td>${row.voltage_avg.toFixed(2)}</td>
+                    <td>${row.current_avg.toFixed(2)}</td>
+                    <td>${row.frequency.toFixed(2)}</td>
+                    <td>${row.active_power_total.toFixed(2)}</td>
+                    <td>${row.is_simulation ? 'Simulation' : 'Real-time'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            loadingIndicator.classList.remove('show');
+            previewPanel.classList.add('show');
+
+        } catch (error) {
+            console.error('Error previewing report:', error);
+            alert('Failed to generate preview. Please try again.');
+            loadingIndicator.classList.remove('show');
+        }
+    }
+
+    // Download report
+    async function downloadReport(format) {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        try {
+            loadingIndicator.classList.add('show');
+
+            const params = getFilterParams();
+            const endpoint = format === 'excel' ? 'export/excel' : 'export/csv';
+
+            const headers = {};
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const response = await fetch(`${API_URL}/api/reports/${endpoint}?${params}`, { headers });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate report');
+            }
+
+            // Download file
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+
+            // Get filename from Content-Disposition header or use default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const filenameMatch = contentDisposition && contentDisposition.match(/filename="?(.+)"?/);
+            a.download = filenameMatch ? filenameMatch[1] : `report.${format === 'excel' ? 'xlsx' : 'csv'}`;
+
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+            loadingIndicator.classList.remove('show');
+
+            alert(`Report downloaded successfully!`);
+
+        } catch (error) {
+            console.error('Error downloading report:', error);
+            alert('Failed to download report. Please try again.');
+            loadingIndicator.classList.remove('show');
+        }
+    }
+
+    // Initialize on page load
+    initializeDateInputs();
+</script>
+{% endblock %}

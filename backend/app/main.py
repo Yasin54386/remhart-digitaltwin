@@ -27,7 +27,7 @@ from app.database import init_db, check_db_connection, get_db
 from app.utils.security import create_default_users
 
 # Import routers
-from app.routers import auth, grid_data, websocket_router, simulator
+from app.routers import auth, grid_data, websocket_router, simulator, reports
 
 # ============================================
 # Application Lifecycle Management
@@ -155,6 +155,13 @@ app.include_router(
     simulator.router,
     prefix="/api/simulator",
     tags=["Simulator"]
+)
+
+# Reports routes
+app.include_router(
+    reports.router,
+    prefix="/api/reports",
+    tags=["Reports"]
 )
 
 

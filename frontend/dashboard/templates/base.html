@@ -218,12 +218,12 @@
         async function checkActiveSimulation() {
             try {
                 let url = `${API_URL}/api/simulator/active`;
-                
+
                 const headers = {};
                 if (authToken) {
                     headers['Authorization'] = `Bearer ${authToken}`;
                 }
-                
+
                 const response = await fetch(url, { headers });
 
                 // If 404, it means no active simulation (which is OK)
@@ -235,7 +235,7 @@
                     const sim = await response.json();
                     activeSimulationId = sim.simulation_id;
                     document.getElementById('activeSimName').textContent = sim.name;
-                    document.getElementById('activeSimName').style.display = 'inline-block';
+                    // Don't show badge on load - let toggleDataSource control visibility
                     console.log('Active simulation:', sim.name);
                 }
             } catch (error) {
@@ -247,7 +247,15 @@
         function toggleDataSource() {
             isSimulatorMode = document.getElementById('dataSourceToggle').checked;
             console.log('Mode switched to:', isSimulatorMode ? 'Simulator' : 'Real-time');
-            
+
+            // Show/hide simulation badge based on mode
+            const simBadge = document.getElementById('activeSimName');
+            if (isSimulatorMode && activeSimulationId) {
+                simBadge.style.display = 'inline-block';
+            } else {
+                simBadge.style.display = 'none';
+            }
+
             // Call page-specific reload function if it exists
             if (typeof onDataSourceChange === 'function') {
                 onDataSourceChange(isSimulatorMode, activeSimulationId);

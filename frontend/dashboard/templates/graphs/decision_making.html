@@ -595,7 +595,7 @@
             const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
 
             // Reactive Power Compensation
-            const compResp = await fetch(`${API_URL}/api/ml/decision/reactive-power${params}&hours=2`, {
+            const compResp = await fetch(`${API_URL}/api/ml/decision/reactive-power${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const compData = await compResp.json();
@@ -613,7 +613,7 @@
             }
 
             // Load Balancing
-            const balResp = await fetch(`${API_URL}/api/ml/decision/load-balancing${params}&hours=2`, {
+            const balResp = await fetch(`${API_URL}/api/ml/decision/load-balancing${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const balData = await balResp.json();
@@ -644,7 +644,7 @@
             }
 
             // Grid Stability
-            const stabResp = await fetch(`${API_URL}/api/ml/decision/stability-score${params}&hours=2`, {
+            const stabResp = await fetch(`${API_URL}/api/ml/decision/stability-score${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const stabData = await stabResp.json();
@@ -679,7 +679,7 @@
             }
 
             // Optimal Dispatch
-            const dispResp = await fetch(`${API_URL}/api/ml/decision/optimal-dispatch${params}&hours=2`, {
+            const dispResp = await fetch(`${API_URL}/api/ml/decision/optimal-dispatch${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const dispData = await dispResp.json();
@@ -732,7 +732,7 @@
         updateVisualizations();
 
         // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 5000);
+        setInterval(updateVisualizations, 30000); // TODO: Replace with WebSocket for real-time updates
     });
 </script>
 {% endblock %}

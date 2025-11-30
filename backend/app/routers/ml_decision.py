@@ -52,7 +52,7 @@ async def get_latest_decision_insights(
 
 @router.get("/reactive-power")
 async def get_reactive_power_compensation(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -102,7 +102,7 @@ async def get_reactive_power_compensation(
 
 @router.get("/load-balancing")
 async def get_load_balancing_optimization(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -160,7 +160,7 @@ async def get_load_balancing_optimization(
 
 @router.get("/stability-score")
 async def get_grid_stability_scoring(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -209,7 +209,7 @@ async def get_grid_stability_scoring(
 
 @router.get("/optimal-dispatch")
 async def get_optimal_dispatch_advisory(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)

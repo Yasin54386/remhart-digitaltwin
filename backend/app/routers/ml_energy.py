@@ -52,7 +52,7 @@ async def get_latest_energy_insights(
 
 @router.get("/load-forecast")
 async def get_load_forecasting(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -108,7 +108,7 @@ async def get_load_forecasting(
 
 @router.get("/energy-loss")
 async def get_energy_loss_estimation(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -204,7 +204,7 @@ async def get_power_flow_optimization(
 
 @router.get("/demand-response")
 async def get_demand_response_potential(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)

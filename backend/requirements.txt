@@ -37,6 +37,9 @@ python-dateutil==2.8.2
 # HTTP Client (for testing)
 httpx==0.25.2
 
+# Excel/CSV Export
+openpyxl==3.1.2
+
 # Development
 pytest==7.4.3
 pytest-asyncio==0.21.1

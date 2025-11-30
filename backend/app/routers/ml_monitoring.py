@@ -59,7 +59,7 @@ async def get_latest_monitoring_insights(
 
 @router.get("/voltage-anomaly")
 async def get_voltage_anomaly_detection(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -70,20 +70,23 @@ async def get_voltage_anomaly_detection(
     Returns:
         Time-series of voltage anomaly predictions
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -108,7 +111,7 @@ async def get_voltage_anomaly_detection(
 
 @router.get("/harmonic-analysis")
 async def get_harmonic_analysis(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -119,20 +122,23 @@ async def get_harmonic_analysis(
     Returns:
         Time-series of THD estimates and harmonic components
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -214,7 +220,7 @@ async def get_frequency_stability(
 
 @router.get("/phase-imbalance")
 async def get_phase_imbalance(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -225,20 +231,23 @@ async def get_phase_imbalance(
     Returns:
         Time-series of phase imbalance severity
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:

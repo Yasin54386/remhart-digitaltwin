@@ -52,7 +52,7 @@ async def get_latest_maintenance_insights(
 
 @router.get("/equipment-failure")
 async def get_equipment_failure_prediction(
-    hours: int = Query(None, description="Hours of historical data (optional, defaults to all data)"),
+    hours: Optional[int] = Query(None, description="Hours of historical data (optional, defaults to all data)"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -105,7 +105,7 @@ async def get_equipment_failure_prediction(
 
 @router.get("/overload-risk")
 async def get_overload_risk_classification(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -157,7 +157,7 @@ async def get_overload_risk_classification(
 
 @router.get("/power-quality-index")
 async def get_power_quality_index(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -211,7 +211,7 @@ async def get_power_quality_index(
 
 @router.get("/voltage-sag")
 async def get_voltage_sag_prediction(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)

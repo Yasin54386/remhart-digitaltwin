@@ -52,7 +52,7 @@ async def get_latest_energy_insights(
 
 @router.get("/load-forecast")
 async def get_load_forecasting(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -63,15 +63,17 @@ async def get_load_forecasting(
     Returns:
         Historical load and 24-hour forecast
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
@@ -108,7 +110,7 @@ async def get_load_forecasting(
 
 @router.get("/energy-loss")
 async def get_energy_loss_estimation(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -119,20 +121,23 @@ async def get_energy_loss_estimation(
     Returns:
         Time-series of energy losses and efficiency metrics
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -204,7 +209,7 @@ async def get_power_flow_optimization(
 
 @router.get("/demand-response")
 async def get_demand_response_potential(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -215,20 +220,23 @@ async def get_demand_response_potential(
     Returns:
         Load clustering and DR recommendations
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:

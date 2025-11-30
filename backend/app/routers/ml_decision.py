@@ -52,7 +52,7 @@ async def get_latest_decision_insights(
 
 @router.get("/reactive-power")
 async def get_reactive_power_compensation(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -63,20 +63,23 @@ async def get_reactive_power_compensation(
     Returns:
         Time-series of power factor and compensation requirements
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -102,7 +105,7 @@ async def get_reactive_power_compensation(
 
 @router.get("/load-balancing")
 async def get_load_balancing_optimization(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -113,20 +116,23 @@ async def get_load_balancing_optimization(
     Returns:
         Time-series of load distribution and redistribution plans
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -160,7 +166,7 @@ async def get_load_balancing_optimization(
 
 @router.get("/stability-score")
 async def get_grid_stability_scoring(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -171,20 +177,23 @@ async def get_grid_stability_scoring(
     Returns:
         Time-series of comprehensive stability scores
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -209,7 +218,7 @@ async def get_grid_stability_scoring(
 
 @router.get("/optimal-dispatch")
 async def get_optimal_dispatch_advisory(
-    hours: int = Query(None, description="Hours of historical data"),
+    hours: Optional[int] = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -220,20 +229,23 @@ async def get_optimal_dispatch_advisory(
     Returns:
         Time-series of load and recommended generation
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:

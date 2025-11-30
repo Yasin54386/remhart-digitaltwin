@@ -183,10 +183,15 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const API_URL = '{{ api_url }}';
+    // API Configuration with fallback
+    const API_URL = '{{ api_url }}' || 'http://127.0.0.1:8001';
     const token = '{{ request.session.access_token }}';
     let isSimulation = false;
     let failureChart, overloadChart, pqiChart, sagChart;
+
+    // Validate configuration
+    console.log('API_URL:', API_URL);
+    console.log('Token present:', !!token);
 
     function initCharts() {
         console.log('Initializing charts...');

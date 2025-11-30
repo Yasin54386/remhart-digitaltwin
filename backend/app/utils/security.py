@@ -180,7 +180,8 @@ async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme_optiona
     try:
         payload = verify_token(token)
         return payload
-    except HTTPException:
+    except Exception:
+        # Return None for any authentication errors (invalid token, expired, etc.)
         return None
 
 

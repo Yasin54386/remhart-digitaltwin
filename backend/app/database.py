@@ -22,7 +22,7 @@ load_dotenv()
 # Database URL from environment
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+pymysql://root:@localhost:3306/remhart_db"
+    "mysql+pymysql://root:root@localhost:3306/remhart_db"
 )
 
 

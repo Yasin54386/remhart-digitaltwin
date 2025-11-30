@@ -26,39 +26,6 @@
         font-size: 18px;
         font-weight: bold;
         color: #2c3e50;
-        flex-grow: 1;
-    }
-
-    .card-actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .info-btn, .download-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 18px;
-        padding: 5px 10px;
-        border-radius: 5px;
-        transition: all 0.3s;
-    }
-
-    .info-btn {
-        color: #3498db;
-    }
-
-    .info-btn:hover {
-        background: #ebf5fb;
-    }
-
-    .download-btn {
-        color: #27ae60;
-    }
-
-    .download-btn:hover {
-        background: #eafaf1;
     }
 
     .chart-container {
@@ -87,14 +54,63 @@
     .risk-medium { background: #f39c12; color: white; }
     .risk-high { background: #e74c3c; color: white; }
 
-    .modal-body h5 {
+    .info-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 30px;
+        margin-bottom: 25px;
+        margin-top: 40px;
+    }
+
+    .info-section h3 {
+        color: #e74c3c;
+        margin-bottom: 20px;
+        font-size: 24px;
+        border-bottom: 3px solid #e74c3c;
+        padding-bottom: 10px;
+    }
+
+    .info-section h4 {
+        color: #2c3e50;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        font-size: 18px;
+    }
+
+    .info-section h5 {
         color: #e74c3c;
         margin-top: 20px;
         margin-bottom: 10px;
+        font-size: 16px;
     }
 
-    .modal-body h5:first-child {
-        margin-top: 0;
+    .info-section p {
+        color: #555;
+        line-height: 1.8;
+        margin-bottom: 15px;
+    }
+
+    .info-section ul {
+        margin-bottom: 20px;
+    }
+
+    .info-section ul li {
+        margin-bottom: 8px;
+        color: #555;
+    }
+
+    .model-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .model-details {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
@@ -118,14 +134,6 @@
                     <div class="ml-card-title">
                         <i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction
                     </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#failureInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                        <button class="download-btn" onclick="downloadTrainingData('failure')" title="Download Training Data">
-                            <i class="fas fa-download"></i>
-                        </button>
-                    </div>
                 </div>
                 <div>
                     <span>Risk Level:</span>
@@ -146,14 +154,6 @@
                 <div class="ml-card-header">
                     <div class="ml-card-title">
                         <i class="fas fa-bolt"></i> Overload Risk Classification
-                    </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#overloadInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                        <button class="download-btn" onclick="downloadTrainingData('overload')" title="Download Training Data">
-                            <i class="fas fa-download"></i>
-                        </button>
                     </div>
                 </div>
                 <div>
@@ -179,14 +179,6 @@
                     <div class="ml-card-title">
                         <i class="fas fa-tachometer-alt"></i> Power Quality Index
                     </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#pqiInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                        <button class="download-btn" onclick="downloadTrainingData('pqi')" title="Download Training Data">
-                            <i class="fas fa-download"></i>
-                        </button>
-                    </div>
                 </div>
                 <div>
                     <span>PQI Score:</span>
@@ -206,14 +198,6 @@
                     <div class="ml-card-title">
                         <i class="fas fa-arrow-down"></i> Voltage Sag Prediction
                     </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#sagInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                        <button class="download-btn" onclick="downloadTrainingData('sag')" title="Download Training Data">
-                            <i class="fas fa-download"></i>
-                        </button>
-                    </div>
                 </div>
                 <div>
                     <span>Sag Risk:</span>
@@ -229,17 +213,16 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- Equipment Failure Info Modal -->
-<div class="modal fade" id="failureInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
+    <!-- Model Information Section -->
+    <div class="info-section">
+        <h3><i class="fas fa-info-circle"></i> Model Details & Information</h3>
+
+        <div class="model-details">
+            <!-- Equipment Failure Prediction -->
+            <div>
+                <h4><i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction</h4>
+
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
                 <p>This model predicts the probability of equipment failure over time by analyzing voltage stress, current imbalance, frequency deviations, and power quality degradation patterns in grid components.</p>
 
@@ -266,19 +249,11 @@
                 <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
                 <p>Equipment failure in electrical systems follows physics-based degradation patterns. This model captures the accelerated aging effects of electrical stress (V²/R heating), mechanical stress (frequency-induced vibrations), and thermal fatigue. The Random Forest algorithm excels at capturing non-linear interactions between these stressors, providing accurate early warnings validated against IEEE reliability standards.</p>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Overload Risk Info Modal -->
-<div class="modal fade" id="overloadInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="fas fa-bolt"></i> Overload Risk Classification</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
+            <!-- Overload Risk Classification -->
+            <div>
+                <h4><i class="fas fa-bolt"></i> Overload Risk Classification</h4>
+
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
                 <p>This model classifies the current overload risk level (Low/Medium/High) by analyzing real-time current, power consumption patterns, and thermal capacity utilization across all three phases.</p>
 
@@ -304,19 +279,11 @@
                 <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
                 <p>Overload conditions are governed by thermal limits (I²R heating) and conductor ampacity ratings. This model uses IEEE and IEC standards for thermal time constants, allowing accurate risk classification. The Decision Tree provides interpretable rules matching operator experience while capturing complex load patterns. Validated against transformer and cable thermal ratings from industry standards.</p>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Power Quality Index Info Modal -->
-<div class="modal fade" id="pqiInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-tachometer-alt"></i> Power Quality Index</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
+            <!-- Power Quality Index -->
+            <div>
+                <h4><i class="fas fa-tachometer-alt"></i> Power Quality Index</h4>
+
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
                 <p>This model computes a comprehensive Power Quality Index (PQI) score from 0-100 by analyzing voltage stability, frequency stability, harmonic distortion (THD), phase balance, and reactive power compensation efficiency.</p>
 
@@ -342,19 +309,11 @@
                 <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
                 <p>Power quality directly impacts equipment performance, with poor quality causing overheating, misoperation, and reduced lifespan. The PQI aggregates multiple IEEE-defined metrics (voltage regulation, THD limits, unbalance factors) using a neural network trained to weight factors by their impact on equipment and system stability. Correlation with equipment failure rates validates the PQI as a predictive indicator.</p>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Voltage Sag Info Modal -->
-<div class="modal fade" id="sagInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-arrow-down"></i> Voltage Sag Prediction</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
+            <!-- Voltage Sag Prediction -->
+            <div>
+                <h4><i class="fas fa-arrow-down"></i> Voltage Sag Prediction</h4>
+
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
                 <p>This model predicts the probability and expected magnitude of voltage sag events by analyzing voltage trends, load patterns, reactive power imbalance, and historical sag precursors.</p>
 
@@ -387,7 +346,6 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // Use global API_URL from base.html
     const token = '{{ request.session.access_token }}';
@@ -603,99 +561,6 @@
         } catch (error) {
             console.error('Error fetching ML data:', error);
         }
-    }
-
-    // Download training data function
-    function downloadTrainingData(modelType) {
-        const trainingDatasets = {
-            failure: {
-                model: 'Random Forest Classifier',
-                algorithm: 'Ensemble learning with 100 decision trees',
-                scenarios: [
-                    { scenario: 'Normal Operation', count: 1000, V: '230±5V', I: 'Balanced ±2A', f: '50±0.1Hz', description: 'Baseline healthy operation' },
-                    { scenario: 'Voltage Stress', count: 1000, V: '230±35V', I: 'Balanced ±2A', f: '50±0.2Hz', description: 'Sustained over/under-voltage' },
-                    { scenario: 'Current Imbalance', count: 1000, V: '230±5V', I: 'Imbalanced >20%', f: '50±0.1Hz', description: 'Asymmetric loading patterns' },
-                    { scenario: 'Thermal Cycling', count: 1000, V: '230±8V', I: 'High load cycles', f: '50±0.3Hz', description: 'Repeated high-temperature stress' },
-                    { scenario: 'Frequency Instability', count: 1000, V: '230±5V', I: 'Balanced ±2A', f: '50±0.8Hz', description: 'Mechanical vibration stress' }
-                ],
-                useCase: 'Predict equipment failure probability based on electrical stress patterns',
-                gridBenefit: 'Prevents unplanned outages, optimizes maintenance scheduling, reduces emergency repair costs',
-                validation: 'Validated against IEEE equipment reliability standards and accelerated aging curves'
-            },
-            overload: {
-                model: 'Decision Tree Classifier',
-                algorithm: 'Rule-based classification with Gini impurity, max depth 10',
-                scenarios: [
-                    { scenario: 'Normal Load', count: 1500, load: '<80% rated', imbalance: '<5%', temp: 'Below thermal limits', risk: 'Low' },
-                    { scenario: 'High Load', count: 1500, load: '80-100% rated', imbalance: '5-15%', temp: 'Approaching limits', risk: 'Medium' },
-                    { scenario: 'Overload', count: 1500, load: '>100% rated', imbalance: '>20%', temp: 'Exceeding limits', risk: 'High' },
-                    { scenario: 'Transient Peaks', count: 500, load: 'Up to 150% rated', imbalance: 'Variable', temp: 'Short duration spikes', risk: 'Medium-High' }
-                ],
-                useCase: 'Classify real-time overload risk to prevent equipment thermal damage',
-                gridBenefit: 'Prevents transformer/cable damage, enables proactive load shedding, identifies capacity upgrade needs',
-                validation: 'Based on IEEE and IEC thermal rating standards, validated against ampacity tables'
-            },
-            pqi: {
-                model: 'Neural Network (MLP)',
-                algorithm: '3 hidden layers [64, 32, 16 neurons], ReLU activation, Adam optimizer',
-                scenarios: [
-                    { scenario: 'Excellent Quality', count: 1000, V: '±3%', f: '±0.1Hz', THD: '<3%', balance: '<2%', PQI: '90-100' },
-                    { scenario: 'Good Quality', count: 1500, V: '±5%', f: '±0.2Hz', THD: '<5%', balance: '<5%', PQI: '70-89' },
-                    { scenario: 'Fair Quality', count: 1500, V: '±8%', f: '±0.5Hz', THD: '<8%', balance: '<10%', PQI: '50-69' },
-                    { scenario: 'Poor Quality', count: 1000, V: '>±8%', f: '>±0.5Hz', THD: '>8%', balance: '>10%', PQI: '<50' }
-                ],
-                useCase: 'Comprehensive power quality assessment aggregating voltage, frequency, harmonics, and balance',
-                gridBenefit: 'Single metric for SLA compliance, prevents customer equipment malfunction, identifies root causes',
-                validation: 'Aligned with IEEE 1159 and EN 50160 power quality standards'
-            },
-            sag: {
-                model: 'Support Vector Machine (SVM)',
-                algorithm: 'RBF kernel, C=1.0, gamma=0.1, binary classification',
-                scenarios: [
-                    { scenario: 'Normal Operation', count: 2000, V: '±5%', Q: 'Adequate reserves', trend: 'Stable', sag_prob: '0-5%' },
-                    { scenario: 'Fault-Induced Sags', count: 1500, V_drop: '30-90%', duration: '0.5-3 cycles', cause: 'Short circuits', sag_prob: '80-100%' },
-                    { scenario: 'Load-Induced Sags', count: 1000, V_drop: '10-30%', duration: '1-10 cycles', cause: 'Motor starts', sag_prob: '40-70%' },
-                    { scenario: 'Weak System', count: 500, V: 'Declining trend', Q: 'Depleted reserves', Z: 'High impedance', sag_prob: '20-40%' }
-                ],
-                useCase: 'Predict voltage sag events before they occur based on system conditions',
-                gridBenefit: 'Warn industrial customers, adjust protection coordination, deploy reactive power support proactively',
-                validation: 'Validated against IEEE 1159 sag characterization, 95% detection accuracy in simulation'
-            }
-        };
-
-        const data = trainingDatasets[modelType];
-        if (!data) return;
-
-        // Create Excel workbook
-        const wb = XLSX.utils.book_new();
-
-        // Overview sheet
-        const overview = [
-            ['Predictive Maintenance Model - Training Data'],
-            [''],
-            ['Model Type', data.model],
-            ['Algorithm', data.algorithm],
-            ['Use Case', data.useCase],
-            ['Grid Benefits', data.gridBenefit],
-            ['Validation', data.validation],
-            [''],
-            ['Training Dataset Scenarios:']
-        ];
-
-        // Add scenario headers
-        const scenarioHeaders = Object.keys(data.scenarios[0]);
-        overview.push(scenarioHeaders);
-
-        // Add scenario data
-        data.scenarios.forEach(scenario => {
-            overview.push(Object.values(scenario));
-        });
-
-        const wsOverview = XLSX.utils.aoa_to_sheet(overview);
-        XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
-
-        // Generate and download
-        XLSX.writeFile(wb, `${modelType}_training_data.xlsx`);
     }
 
     // Check simulator mode from global variable

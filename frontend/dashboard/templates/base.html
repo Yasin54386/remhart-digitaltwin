@@ -256,6 +256,12 @@
                 simBadge.style.display = 'none';
             }
 
+            // Dispatch event for pages that listen to it
+            const event = new CustomEvent('simulatorModeChanged', {
+                detail: { isSimulatorMode: isSimulatorMode, simulationId: activeSimulationId }
+            });
+            document.dispatchEvent(event);
+
             // Call page-specific reload function if it exists
             if (typeof onDataSourceChange === 'function') {
                 onDataSourceChange(isSimulatorMode, activeSimulationId);

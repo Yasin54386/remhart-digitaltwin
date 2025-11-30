@@ -50,7 +50,7 @@ async def get_latest_decision_insights(
     }
 
 
-@router.get("/reactive-compensation")
+@router.get("/reactive-power")
 async def get_reactive_power_compensation(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
@@ -96,7 +96,7 @@ async def get_reactive_power_compensation(
         "algorithm": "Neural Network Optimizer",
         "training_dataset": "Power factor correction scenarios targeting 0.95 PF, calculated using power triangle equations",
         "benefits": "Reduces reactive power charges, improves voltage regulation, increases system capacity",
-        "data": results
+        "predictions": results
     }
 
 
@@ -154,11 +154,11 @@ async def get_load_balancing_optimization(
         "algorithm": "Multi-Criteria Decision Analysis (MCDA)",
         "training_dataset": "Optimization scenarios balancing load distribution, losses, and voltage stability",
         "benefits": "Reduces neutral current, extends transformer life, improves efficiency",
-        "data": results
+        "predictions": results
     }
 
 
-@router.get("/grid-stability")
+@router.get("/stability-score")
 async def get_grid_stability_scoring(
     hours: int = Query(24, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
@@ -203,7 +203,7 @@ async def get_grid_stability_scoring(
         "algorithm": "Ensemble Model (Random Forest + Rule-based)",
         "training_dataset": "Stability scores calculated from voltage, frequency, power factor, and balance metrics",
         "benefits": "Provides single metric for grid health, guides operator decisions, prevents blackouts",
-        "data": results
+        "predictions": results
     }
 
 
@@ -252,5 +252,5 @@ async def get_optimal_dispatch_advisory(
         "algorithm": "SVR (Support Vector Regression)",
         "training_dataset": "Load patterns with optimal generation including 15% spinning reserve",
         "benefits": "Optimizes fuel consumption, maintains reliability reserves, reduces generation costs",
-        "data": results
+        "predictions": results
     }

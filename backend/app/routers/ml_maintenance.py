@@ -4,7 +4,7 @@ Provides AI-powered predictive maintenance insights
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import Optional
 from datetime import datetime, timedelta
@@ -25,11 +25,11 @@ async def get_latest_maintenance_insights(
 ):
     """Get latest predictive maintenance ML insights"""
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     )
 
     if is_simulation is not None:
@@ -66,11 +66,11 @@ async def get_equipment_failure_prediction(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -115,11 +115,11 @@ async def get_overload_risk_classification(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -164,11 +164,11 @@ async def get_power_quality_index(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -215,11 +215,11 @@ async def get_voltage_sag_prediction(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:

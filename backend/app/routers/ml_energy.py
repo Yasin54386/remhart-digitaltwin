@@ -4,7 +4,7 @@ Provides AI-powered energy flow optimization insights
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import Optional
 from datetime import datetime, timedelta
@@ -25,11 +25,11 @@ async def get_latest_energy_insights(
 ):
     """Get latest energy flow ML insights"""
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     )
 
     if is_simulation is not None:
@@ -66,11 +66,11 @@ async def get_load_forecasting(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -122,11 +122,11 @@ async def get_energy_loss_estimation(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -168,11 +168,11 @@ async def get_power_flow_optimization(
         Current distribution and optimal redistribution plan
     """
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     )
 
     if is_simulation is not None:
@@ -218,11 +218,11 @@ async def get_demand_response_potential(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:

@@ -4,7 +4,7 @@ Provides AI-powered real-time grid monitoring insights
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import Optional
 from datetime import datetime, timedelta
@@ -31,11 +31,11 @@ async def get_latest_monitoring_insights(
     """
     # Get latest data point
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     )
 
     if is_simulation is not None:
@@ -73,11 +73,11 @@ async def get_voltage_anomaly_detection(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -122,11 +122,11 @@ async def get_harmonic_analysis(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
@@ -169,11 +169,11 @@ async def get_frequency_stability(
     """
     # Get latest 100 data points for LSTM input
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     )
 
     if is_simulation is not None:
@@ -228,11 +228,11 @@ async def get_phase_imbalance(
     since = datetime.now() - timedelta(hours=hours)
 
     query = db.query(DateTimeTable).options(
-        db.joinedload(DateTimeTable.voltage),
-        db.joinedload(DateTimeTable.current),
-        db.joinedload(DateTimeTable.frequency),
-        db.joinedload(DateTimeTable.active_power),
-        db.joinedload(DateTimeTable.reactive_power)
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power)
     ).filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:

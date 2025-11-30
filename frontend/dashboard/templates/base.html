@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}REMHART Digital Twin{% endblock %}</title>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Base Styles -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; gap: 20px; align-items: center; }
+        .logout-btn {
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* Container */
+        .container { 
+            padding: 30px; 
+            max-width: 1400px; 
+            margin: 0 auto; 
+        }
+        
+        /* Navigation Links */
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .nav-links a {
+            padding: 10px 20px;
+            background: white;
+            color: #27ae60;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        .nav-links a:hover { 
+            background: #27ae60; 
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(39,174,96,0.3);
+        }
+        .nav-links a.active {
+            background: #27ae60;
+            color: white;
+        }
+        
+        /* Toggle Switch - FIXED */
+        .toggle-section {
+            background: white;
+            padding: 20px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .toggle-label {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+        .simulation-badge {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 15px;
+            font-size: 13px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        
+        /* Toggle Switch Container */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 280px;
+            height: 50px;
+            background: #e0e0e0;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle-switch input {
+            display: none;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-radius: 25px;
+            overflow: hidden;
+        }
+        
+        .toggle-option {
+            position: relative;
+            z-index: 2;
+            color: #666;
+            font-weight: 600;
+            font-size: 15px;
+            transition: color 0.3s;
+            padding: 5px 15px;
+        }
+        
+        .toggle-option.active {
+            color: white;
+        }
+        
+        .toggle-background {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 130px;
+            height: 40px;
+            background: #27ae60;
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .toggle-switch input:checked ~ .toggle-slider .toggle-background {
+            left: calc(100% - 135px);
+            background: #3498db;
+        }
+        
+        .toggle-switch input:checked ~ .toggle-slider .toggle-option:first-child {
+            color: #666;
+        }
+        
+        .toggle-switch input:checked ~ .toggle-slider .toggle-option:last-child {
+            color: white;
+        }
+        
+        /* Common Card Styles */
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- Header Component -->
+    {% include 'components/header.html' %}
+    
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Navigation Component -->
+        {% include 'components/navigation.html' %}
+        
+        <!-- Data Source Toggle Component -->
+        {% include 'components/data_toggle.html' %}
+        
+        <!-- Page Content -->
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Base JavaScript -->
+    <script>
+        const API_URL = '{{ api_url }}';
+        const WS_URL = '{{ ws_url }}';
+        const authToken = '{{ request.session.access_token }}';
+        let isSimulatorMode = false;
+        let activeSimulationId = null;
+        
+        // Check for active simulation on load
+        async function checkActiveSimulation() {
+            try {
+                let url = `${API_URL}/api/simulator/active`;
+                
+                const headers = {};
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch(url, { headers });
+
+                // If 404, it means no active simulation (which is OK)
+                if (response.status === 404) {
+                    console.log('No active simulation found');
+                    return;
+                }
+                if (response.ok) {
+                    const sim = await response.json();
+                    activeSimulationId = sim.simulation_id;
+                    document.getElementById('activeSimName').textContent = sim.name;
+                    document.getElementById('activeSimName').style.display = 'inline-block';
+                    console.log('Active simulation:', sim.name);
+                }
+            } catch (error) {
+                console.log('No active simulation');
+            }
+        }
+        
+        // Toggle between real-time and simulator data
+        function toggleDataSource() {
+            isSimulatorMode = document.getElementById('dataSourceToggle').checked;
+            console.log('Mode switched to:', isSimulatorMode ? 'Simulator' : 'Real-time');
+            
+            // Call page-specific reload function if it exists
+            if (typeof onDataSourceChange === 'function') {
+                onDataSourceChange(isSimulatorMode, activeSimulationId);
+            }
+        }
+        
+        // Initialize on page load
+        checkActiveSimulation();
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

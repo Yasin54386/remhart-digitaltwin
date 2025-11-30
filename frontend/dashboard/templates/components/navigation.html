@@ -1,0 +1,20 @@
+<div class="nav-links">
+    <a href="{% url 'dashboard:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>
+        Dashboard
+    </a>
+    <a href="{% url 'dashboard:simulator' %}" {% if request.resolver_match.url_name == 'simulator' %}class="active"{% endif %}>
+        Simulator
+    </a>
+    <a href="{% url 'dashboard:predictive_maintenance' %}" {% if request.resolver_match.url_name == 'predictive_maintenance' %}class="active"{% endif %}>
+        Predictive Maintenance
+    </a>
+    <a href="{% url 'dashboard:energy_flow' %}" {% if request.resolver_match.url_name == 'energy_flow' %}class="active"{% endif %}>
+        Energy Flow
+    </a>
+    <a href="{% url 'dashboard:realtime_monitoring' %}" {% if request.resolver_match.url_name == 'realtime_monitoring' %}class="active"{% endif %}>
+        Real-time Monitoring
+    </a>
+    <a href="{% url 'dashboard:decision_making' %}" {% if request.resolver_match.url_name == 'decision_making' %}class="active"{% endif %}>
+        Decision Making
+    </a>
+</div>

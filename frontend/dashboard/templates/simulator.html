@@ -1,0 +1,742 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Simulator - REMHART</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; gap: 20px; align-items: center; }
+        .logout-btn {
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .container { padding: 30px; max-width: 1400px; margin: 0 auto; }
+        
+        /* Navigation */
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .nav-links a {
+            padding: 10px 20px;
+            background: white;
+            color: #27ae60;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .nav-links a:hover { background: #27ae60; color: white; }
+        
+        /* Scenario Templates */
+        .templates-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .template-card {
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .template-card:hover {
+            border-color: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(39,174,96,0.2);
+        }
+        .template-card.selected {
+            border-color: #27ae60;
+            background: #f0f9f4;
+        }
+        .template-card h3 { color: #27ae60; margin-bottom: 10px; font-size: 16px; }
+        .template-card p { color: #666; font-size: 13px; }
+        
+        /* Parameters Form */
+        .params-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label {
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-group input, .form-group select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+        
+        /* Advanced Options */
+        .advanced-section {
+            margin-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 20px;
+        }
+        .toggle-advanced {
+            background: #f5f5f5;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #27ae60;
+        }
+        .advanced-params {
+            display: none;
+            margin-top: 20px;
+        }
+        .advanced-params.visible { display: block; }
+        
+        /* Actions */
+        .actions-section {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(39,174,96,0.3);
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover { background: #c0392b; }
+        
+        /* Status */
+        .status-bar {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-text {
+            font-size: 14px;
+            color: #666;
+        }
+        .status-text.running { color: #27ae60; font-weight: bold; }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar.visible { display: block; }
+        .progress-fill {
+            height: 100%;
+            background: #27ae60;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        /* Simulations List */
+        .simulations-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .simulation-item {
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .simulation-item.active {
+            background: #f0f9f4;
+            border-color: #27ae60;
+        }
+        .sim-info h4 { color: #333; margin-bottom: 5px; }
+        .sim-info p { color: #666; font-size: 13px; }
+        .sim-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .sim-btn {
+            padding: 6px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .sim-btn-activate {
+            background: #3498db;
+            color: white;
+        }
+        .sim-btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .section-title {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>REMHART Grid Simulator</h1>
+        <div class="user-info">
+            <span>Welcome, {{ user.username }}</span>
+            <a href="{% url 'dashboard:logout' %}" class="logout-btn">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="nav-links">
+            <a href="{% url 'dashboard:dashboard' %}">Dashboard</a>
+            <a href="{% url 'dashboard:predictive_maintenance' %}">Predictive Maintenance</a>
+            <a href="{% url 'dashboard:energy_flow' %}">Energy Flow</a>
+            <a href="{% url 'dashboard:realtime_monitoring' %}">Real-time Monitoring</a>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div>
+                <span class="status-text" id="statusText">Ready to simulate</span>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            <div id="progressCount" style="color: #27ae60; font-weight: bold;"></div>
+        </div>
+        
+        <!-- Scenario Templates -->
+        <div class="templates-section">
+            <h2 class="section-title">Select Scenario Template</h2>
+            <div class="templates-grid" id="templatesGrid">
+                <!-- Templates will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Parameters Form -->
+        <div class="params-section">
+            <h2 class="section-title">Simulation Parameters</h2>
+            
+            <div class="form-group" style="max-width: 500px;">
+                <label>Simulation Name</label>
+                <input type="text" id="simName" placeholder="e.g., Peak Load Test - January 2025">
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Number of Data Points</label>
+                    <input type="number" id="numPoints" value="100" min="10" max="1000">
+                </div>
+                
+                <div class="form-group">
+                    <label>Interval (seconds)</label>
+                    <input type="number" id="interval" value="1" min="1" max="60">
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #555;">Grid Conditions</h3>
+            
+            <div class="form-grid">
+                <!-- Voltage -->
+                <div class="form-group">
+                    <label>Min Voltage (V)</label>
+                    <input type="number" id="voltageMin" value="220" min="150" max="240" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Max Voltage (V)</label>
+                    <input type="number" id="voltageMax" value="240" min="200" max="280" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Voltage Pattern</label>
+                    <select id="voltagePattern">
+                        <option value="stable">Stable</option>
+                        <option value="fluctuating">Fluctuating</option>
+                        <option value="sag">Voltage Sag</option>
+                        <option value="swell">Voltage Swell</option>
+                    </select>
+                </div>
+                
+                <!-- Current -->
+                <div class="form-group">
+                    <label>Min Current (A)</label>
+                    <input type="number" id="currentMin" value="10" min="0" max="50" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Max Current (A)</label>
+                    <input type="number" id="currentMax" value="20" min="5" max="100" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Current Pattern</label>
+                    <select id="currentPattern">
+                        <option value="stable">Stable</option>
+                        <option value="increasing">Increasing</option>
+                        <option value="decreasing">Decreasing</option>
+                        <option value="spike">Spike</option>
+                    </select>
+                </div>
+                
+                <!-- Frequency -->
+                <div class="form-group">
+                    <label>Min Frequency (Hz)</label>
+                    <input type="number" id="frequencyMin" value="49.9" min="48.0" max="50.0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Max Frequency (Hz)</label>
+                    <input type="number" id="frequencyMax" value="50.1" min="50.0" max="52.0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Frequency Pattern</label>
+                    <select id="frequencyPattern">
+                        <option value="stable">Stable</option>
+                        <option value="drift">Drift</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Advanced Options -->
+            <div class="advanced-section">
+                <button class="toggle-advanced" onclick="toggleAdvanced()">Show Advanced Options</button>
+                
+                <div class="advanced-params" id="advancedParams">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Power Factor</label>
+                            <input type="number" id="powerFactor" value="0.95" min="0.5" max="1.0" step="0.01">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Renewable Energy %</label>
+                            <input type="number" id="renewablePercent" value="30" min="0" max="100">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Load Profile</label>
+                            <select id="loadProfile">
+                                <option value="constant">Constant</option>
+                                <option value="ramping_up">Ramping Up</option>
+                                <option value="ramping_down">Ramping Down</option>
+                                <option value="random">Random</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 15px; color: #555;">Fault Injection</h3>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="injectFault">
+                        <label>Enable Fault Injection</label>
+                    </div>
+                    
+                    <div class="form-grid" id="faultParams" style="margin-top: 15px; display: none;">
+                        <div class="form-group">
+                            <label>Fault Type</label>
+                            <select id="faultType">
+                                <option value="voltage_sag">Voltage Sag</option>
+                                <option value="overcurrent">Overcurrent</option>
+                                <option value="frequency_drift">Frequency Drift</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Start at Point</label>
+                            <input type="number" id="faultStart" value="30" min="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Duration (points)</label>
+                            <input type="number" id="faultDuration" value="20" min="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="actions-section">
+                <button class="btn btn-primary" onclick="runSimulation()">Run Simulation</button>
+                <button class="btn btn-secondary" onclick="previewSimulation()">Preview</button>
+                <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+            </div>
+        </div>
+        
+        <!-- Active Simulations -->
+        <div class="simulations-section">
+            <h2 class="section-title">Simulation History</h2>
+            <div id="simulationsList">
+                <p style="color: #999;">No simulations yet. Create your first simulation above.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const authToken = '{{ request.session.access_token }}';
+        const API_URL = '{{ api_url }}';
+        let selectedTemplate = 'custom';
+        
+        // Load scenario templates on page load
+        async function loadTemplates() {
+            try {
+                let url = `${API_URL}/api/simulator/templates/list`;
+                
+                const headers = {};
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch(url, { headers });
+
+                const data = await response.json();
+                
+                const grid = document.getElementById('templatesGrid');
+                grid.innerHTML = '';
+                
+                data.templates.forEach(template => {
+                    const card = document.createElement('div');
+                    card.className = 'template-card';
+                    if (template.id === 'custom') {
+                        card.classList.add('selected');
+                    }
+                    card.onclick = () => selectTemplate(template.id, card);
+                    card.innerHTML = `
+                        <h3>${template.name}</h3>
+                        <p>${template.description}</p>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            }
+        }
+        
+        function selectTemplate(templateId, cardElement) {
+            selectedTemplate = templateId;
+            
+            // Update UI
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            cardElement.classList.add('selected');
+            
+            // Auto-fill simulation name
+            if (templateId !== 'custom') {
+                const templateName = cardElement.querySelector('h3').textContent;
+                const timestamp = new Date().toLocaleString();
+                document.getElementById('simName').value = `${templateName} - ${timestamp}`;
+            }
+        }
+        
+        function toggleAdvanced() {
+            const params = document.getElementById('advancedParams');
+            const btn = event.target;
+            
+            if (params.classList.contains('visible')) {
+                params.classList.remove('visible');
+                btn.textContent = 'Show Advanced Options';
+            } else {
+                params.classList.add('visible');
+                btn.textContent = 'Hide Advanced Options';
+            }
+        }
+        
+        // Toggle fault parameters visibility
+        document.getElementById('injectFault').addEventListener('change', function() {
+            const faultParams = document.getElementById('faultParams');
+            faultParams.style.display = this.checked ? 'grid' : 'none';
+        });
+        
+        async function runSimulation() {
+            const simName = document.getElementById('simName').value;
+            
+            if (!simName) {
+                alert('Please enter a simulation name');
+                return;
+            }
+            
+            // Gather parameters
+            const parameters = {
+                num_points: parseInt(document.getElementById('numPoints').value),
+                interval: parseInt(document.getElementById('interval').value),
+                voltage_min: parseFloat(document.getElementById('voltageMin').value),
+                voltage_max: parseFloat(document.getElementById('voltageMax').value),
+                voltage_pattern: document.getElementById('voltagePattern').value,
+                current_min: parseFloat(document.getElementById('currentMin').value),
+                current_max: parseFloat(document.getElementById('currentMax').value),
+                current_pattern: document.getElementById('currentPattern').value,
+                frequency_min: parseFloat(document.getElementById('frequencyMin').value),
+                frequency_max: parseFloat(document.getElementById('frequencyMax').value),
+                frequency_pattern: document.getElementById('frequencyPattern').value,
+                power_factor: parseFloat(document.getElementById('powerFactor').value),
+                renewable_percentage: parseInt(document.getElementById('renewablePercent').value),
+                load_profile: document.getElementById('loadProfile').value,
+                inject_fault: document.getElementById('injectFault').checked
+            };
+            
+            // Add fault parameters if enabled
+            if (parameters.inject_fault) {
+                parameters.fault_type = document.getElementById('faultType').value;
+                parameters.fault_start_point = parseInt(document.getElementById('faultStart').value);
+                parameters.fault_duration = parseInt(document.getElementById('faultDuration').value);
+            }
+            
+            const request = {
+                name: simName,
+                scenario_type: selectedTemplate,
+                parameters: parameters
+            };
+            
+            // Update UI
+            document.getElementById('statusText').textContent = 'Running simulation...';
+            document.getElementById('statusText').classList.add('running');
+            document.getElementById('progressBar').classList.add('visible');
+            
+            try {
+                
+                const response = await fetch(`${API_URL}/api/simulator/run`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(request)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('statusText').textContent = `Simulation completed: ${result.total_points} points generated`;
+                    setTimeout(() => {
+                        document.getElementById('statusText').classList.remove('running');
+                        document.getElementById('progressBar').classList.remove('visible');
+                        loadSimulations();
+                    }, 2000);
+                    
+                    alert(`Simulation "${result.name}" completed successfully!\n\nSwitch to Dashboard and toggle to "Simulator" mode to view results.`);
+                } else {
+                    alert('Simulation failed: ' + (result.message || 'Unknown error'));
+                    document.getElementById('statusText').textContent = 'Ready to simulate';
+                    document.getElementById('statusText').classList.remove('running');
+                    document.getElementById('progressBar').classList.remove('visible');
+                }
+            } catch (error) {
+                console.error('Error running simulation:', error);
+                alert('Error running simulation: ' + error.message);
+                document.getElementById('statusText').textContent = 'Ready to simulate';
+                document.getElementById('statusText').classList.remove('running');
+                document.getElementById('progressBar').classList.remove('visible');
+            }
+        }
+        
+        async function loadSimulations() {
+            try {
+                let url = `${API_URL}/api/simulator/list`;
+                
+                const headers = {};
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch(url, { headers });
+
+                const simulations = await response.json();
+                
+                const listDiv = document.getElementById('simulationsList');
+                
+                if (simulations.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #999;">No simulations yet. Create your first simulation above.</p>';
+                    return;
+                }
+                
+                listDiv.innerHTML = '';
+                
+                simulations.forEach(sim => {
+                    const item = document.createElement('div');
+                    item.className = 'simulation-item';
+                    if (sim.is_active) {
+                        item.classList.add('active');
+                    }
+                    
+                    const date = new Date(sim.created_at).toLocaleString();
+                    const activeLabel = sim.is_active ? ' [ACTIVE]' : '';
+                    
+                    item.innerHTML = `
+                        <div class="sim-info">
+                            <h4>${sim.name}${activeLabel}</h4>
+                            <p>${sim.scenario_type} • ${sim.total_points} points • ${date} • ${sim.status}</p>
+                        </div>
+                        <div class="sim-actions">
+                            ${!sim.is_active ? `<button class="sim-btn sim-btn-activate" onclick="activateSimulation('${sim.simulation_id}')">Activate</button>` : ''}
+                            <button class="sim-btn sim-btn-delete" onclick="deleteSimulation('${sim.simulation_id}', '${sim.name}')">Delete</button>
+                        </div>
+                    `;
+                    
+                    listDiv.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading simulations:', error);
+            }
+        }
+        
+        async function activateSimulation(simulationId) {
+            try {
+                
+                const response = await fetch(`${API_URL}/api/simulator/${simulationId}/activate`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Simulation activated! Switch to Dashboard and toggle to "Simulator" mode.');
+                    loadSimulations();
+                }
+            } catch (error) {
+                console.error('Error activating simulation:', error);
+                alert('Error activating simulation');
+            }
+        }
+        
+        async function deleteSimulation(simulationId, name) {
+            if (!confirm(`Delete simulation "${name}" and all its data?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/simulator/${simulationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(result.message);
+                    loadSimulations();
+                }
+            } catch (error) {
+                console.error('Error deleting simulation:', error);
+                alert('Error deleting simulation');
+            }
+        }
+        
+        function previewSimulation() {
+            alert('Preview feature coming soon!\n\nThis will show a sample chart of what the simulation will generate.');
+        }
+        
+        function resetForm() {
+            document.getElementById('simName').value = '';
+            document.getElementById('numPoints').value = '100';
+            document.getElementById('interval').value = '1';
+            document.getElementById('voltageMin').value = '220';
+            document.getElementById('voltageMax').value = '240';
+            document.getElementById('voltagePattern').value = 'stable';
+            document.getElementById('currentMin').value = '10';
+            document.getElementById('currentMax').value = '20';
+            document.getElementById('currentPattern').value = 'stable';
+            document.getElementById('frequencyMin').value = '49.9';
+            document.getElementById('frequencyMax').value = '50.1';
+            document.getElementById('frequencyPattern').value = 'stable';
+            document.getElementById('powerFactor').value = '0.95';
+            document.getElementById('renewablePercent').value = '30';
+            document.getElementById('loadProfile').value = 'constant';
+            document.getElementById('injectFault').checked = false;
+            document.getElementById('faultParams').style.display = 'none';
+            
+            // Reset template selection
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            selectedTemplate = 'custom';
+        }
+        
+        // Load on page load
+        loadTemplates();
+        loadSimulations();
+        
+        // Refresh simulations every 30 seconds
+        setInterval(loadSimulations, 30000);
+    </script>
+</body>
+</html>

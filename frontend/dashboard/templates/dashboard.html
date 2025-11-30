@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - REMHART{% endblock %}
+
+{% block page_title %}REMHART Digital Twin Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .stat-card h3 { 
+        color: #666; 
+        font-size: 12px; 
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+    .stat-value { 
+        font-size: 36px; 
+        font-weight: bold; 
+        color: #27ae60;
+        line-height: 1;
+    }
+    .stat-unit { 
+        font-size: 18px; 
+        color: #999; 
+        margin-left: 8px;
+        font-weight: 500;
+    }
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .chart-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .chart-card h2 { 
+        margin-bottom: 20px; 
+        color: #333; 
+        font-size: 18px;
+        font-weight: 600;
+    }
+    canvas {
+        max-height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+        <h3>Voltage Average</h3>
+        <span class="stat-value" id="voltageValue">--</span>
+        <span class="stat-unit">V</span>
+    </div>
+    <div class="stat-card">
+        <h3>Current Average</h3>
+        <span class="stat-value" id="currentValue">--</span>
+        <span class="stat-unit">A</span>
+    </div>
+    <div class="stat-card">
+        <h3>Frequency</h3>
+        <span class="stat-value" id="frequencyValue">--</span>
+        <span class="stat-unit">Hz</span>
+    </div>
+    <div class="stat-card">
+        <h3>Active Power</h3>
+        <span class="stat-value" id="powerValue">--</span>
+        <span class="stat-unit">W</span>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="chart-grid">
+    <div class="chart-card">
+        <h2>Voltage Trend</h2>
+        <canvas id="voltageChart"></canvas>
+    </div>
+    <div class="chart-card">
+        <h2>Current Trend</h2>
+        <canvas id="currentChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize charts
+    const voltageChart = new Chart(document.getElementById('voltageChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Voltage (V)',
+                data: [],
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: true }
+            }
+        }
+    });
+    
+    const currentChart = new Chart(document.getElementById('currentChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Current (A)',
+                data: [],
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: true }
+            }
+        }
+    });
+    
+    // Fetch initial data via HTTP
+    async function loadInitialData() {
+        try {
+            let url = `${API_URL}/api/grid/data?limit=50`;
+            
+            const headers = {};
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const response = await fetch(url, { headers });
+            const allData = await response.json();
+            
+            // Filter data based on mode
+            const data = isSimulatorMode 
+                ? allData.filter(item => item.is_simulation && item.simulation_id === activeSimulationId)
+                : allData.filter(item => !item.is_simulation);
+            
+            console.log(`Loaded ${data.length} ${isSimulatorMode ? 'simulation' : 'real-time'} data points`);
+            
+            // Clear charts
+            voltageChart.data.labels = [];
+            voltageChart.data.datasets[0].data = [];
+            currentChart.data.labels = [];
+            currentChart.data.datasets[0].data = [];
+            
+            data.forEach(item => {
+                const time = new Date(item.timestamp).toLocaleTimeString();
+                addDataPoint(voltageChart, time, item.voltage.average);
+                addDataPoint(currentChart, time, item.current.average);
+            });
+            
+            if (data.length > 0) {
+                const latest = data[data.length - 1];
+                updateStats(latest);
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+        }
+    }
+    
+    // WebSocket Connection
+    const ws = new WebSocket(WS_URL);
+    
+    ws.onopen = function() {
+        console.log('WebSocket connected');
+    };
+    
+    ws.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = function() {
+        console.log('WebSocket disconnected');
+    };
+    
+    ws.onmessage = function(event) {
+        const message = JSON.parse(event.data);
+        
+        if (message.type === 'initial_data') {
+            const filteredData = isSimulatorMode
+                ? message.data.filter(item => item.is_simulation && item.simulation_id === activeSimulationId)
+                : message.data.filter(item => !item.is_simulation);
+            
+            filteredData.forEach(item => {
+                const time = new Date(item.timestamp).toLocaleTimeString();
+                addDataPoint(voltageChart, time, item.voltage.average);
+                addDataPoint(currentChart, time, item.current.average);
+            });
+            
+            if (filteredData.length > 0) {
+                const latest = filteredData[filteredData.length - 1];
+                updateStats(latest);
+            }
+        } 
+        else if (message.type === 'new_data') {
+            const data = message.data;
+            
+            // Only process if matches current mode
+            const shouldProcess = isSimulatorMode 
+                ? (data.is_simulation && data.simulation_id === activeSimulationId)
+                : !data.is_simulation;
+            
+            if (shouldProcess) {
+                const time = new Date(data.timestamp).toLocaleTimeString();
+                addDataPoint(voltageChart, time, data.voltage.average);
+                addDataPoint(currentChart, time, data.current.average);
+                updateStats(data);
+            }
+        }
+    };
+    
+    function addDataPoint(chart, label, value) {
+        if (chart.data.labels.length >= 20) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+        chart.data.labels.push(label);
+        chart.data.datasets[0].data.push(value);
+        chart.update('none');
+    }
+    
+    function updateStats(data) {
+        document.getElementById('voltageValue').textContent = data.voltage.average.toFixed(2);
+        document.getElementById('currentValue').textContent = data.current.average.toFixed(2);
+        document.getElementById('frequencyValue').textContent = data.frequency.value.toFixed(2);
+        document.getElementById('powerValue').textContent = data.active_power.total.toFixed(0);
+    }
+    
+    // Called when toggle is switched (defined in base.html)
+    function onDataSourceChange(isSimMode, simId) {
+        if (isSimMode && !simId) {
+            alert('No active simulation. Please run a simulation first.');
+            document.getElementById('dataSourceToggle').checked = false;
+            isSimulatorMode = false;
+            return;
+        }
+        loadInitialData();
+    }
+    
+    // Load data on page load
+    loadInitialData();
+</script>
+{% endblock %}

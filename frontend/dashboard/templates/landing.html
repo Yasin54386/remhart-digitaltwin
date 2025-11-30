@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REMHART - Smart Grid Digital Twin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 60px 80px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 800px;
+        }
+        h1 { color: #27ae60; font-size: 42px; margin-bottom: 20px; }
+        .subtitle { color: #666; font-size: 20px; margin-bottom: 30px; }
+        .description { color: #555; line-height: 1.8; margin-bottom: 40px; text-align: left; }
+        .description h3 { color: #27ae60; margin-top: 20px; margin-bottom: 10px; }
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: #27ae60;
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+        .btn:hover { background: #229954; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(39,174,96,0.4); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>REMHART Digital Twin</h1>
+        <p class="subtitle">Renewable Energy Microgrid Hub for Applied Research and Training</p>
+        
+        <div class="description">
+            <h3>About REMHART</h3>
+            <p>REMHART is a state-of-the-art renewable energy research facility at Charles Darwin University's Energy and Resources Institute (ERI). Our smart grid management system combines cutting-edge digital twin technology with real-time monitoring and AI-powered analytics.</p>
+            
+            <h3>Key Features:</h3>
+            <ul>
+                <li>Real-time grid monitoring and visualization</li>
+                <li>AI-powered predictive maintenance</li>
+                <li>Energy flow optimization</li>
+                <li>Data-driven decision support</li>
+                <li>Advanced analytics and forecasting</li>
+            </ul>
+        </div>
+        
+        <a href="{% url 'dashboard:login' %}" class="btn">Access System</a>
+    </div>
+</body>
+</html>

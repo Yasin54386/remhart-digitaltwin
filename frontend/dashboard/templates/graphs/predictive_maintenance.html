@@ -29,25 +29,20 @@
         flex-grow: 1;
     }
 
-    .card-actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
     .info-btn {
-        background: none;
+        background: #3498db;
         border: none;
         cursor: pointer;
-        font-size: 18px;
-        padding: 5px 10px;
+        font-size: 16px;
+        padding: 8px 12px;
         border-radius: 5px;
         transition: all 0.3s;
-        color: #3498db;
+        color: white;
     }
 
     .info-btn:hover {
-        background: #ebf5fb;
+        background: #2980b9;
+        transform: scale(1.1);
     }
 
     .chart-container {
@@ -76,145 +71,232 @@
     .risk-medium { background: #f39c12; color: white; }
     .risk-high { background: #e74c3c; color: white; }
 
+    /* Grid layout for 2 columns */
+    .graphs-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    @media (max-width: 968px) {
+        .graphs-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        overflow-y: auto;
+    }
+
+    .modal.show {
+        display: block;
+    }
+
+    .modal-dialog {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header.bg-danger {
+        background: #e74c3c;
+        color: white;
+    }
+
+    .modal-header.bg-warning {
+        background: #f39c12;
+        color: #333;
+    }
+
+    .modal-header.bg-info {
+        background: #3498db;
+        color: white;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    .close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: inherit;
+        line-height: 1;
+        padding: 0;
+    }
+
+    .close:hover {
+        opacity: 0.7;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
     .modal-body h5 {
         color: #e74c3c;
         margin-top: 20px;
         margin-bottom: 10px;
+        font-size: 16px;
     }
 
     .modal-body h5:first-child {
         margin-top: 0;
     }
+
+    .modal-body p {
+        line-height: 1.6;
+        margin-bottom: 15px;
+    }
+
+    .modal-body ul {
+        margin-left: 20px;
+        margin-bottom: 15px;
+    }
+
+    .modal-body ul li {
+        margin-bottom: 8px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="mb-2">
-                <i class="fas fa-tools"></i> Predictive Maintenance - AI/ML Powered
-            </h2>
-            <p class="text-muted">Advanced predictive analytics using 4 AI/ML models. Automatically displays latest 200 data points.</p>
-        </div>
+<div class="container">
+    <div style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 10px;">
+            <i class="fas fa-tools"></i> Predictive Maintenance - AI/ML Powered
+        </h2>
+        <p style="color: #666;">Advanced predictive analytics using 4 AI/ML models. Automatically displays latest 200 data points.</p>
     </div>
 
     <!-- Row 1: Equipment Failure + Overload Risk -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction
-                    </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#failureInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                    </div>
+    <div class="graphs-grid">
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction
                 </div>
-                <div>
-                    <span>Risk Level:</span>
-                    <span id="failureRisk" class="risk-badge risk-low">Low</span>
-                    <div class="metric-box">
-                        <strong>Failure Probability:</strong> <span id="failureProb">0%</span><br>
-                        <strong>Est. Time to Failure:</strong> <span id="ttf">365 days</span>
-                    </div>
+                <button class="info-btn" onclick="openModal('failureInfoModal')" title="Learn More">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+            <div>
+                <span>Risk Level:</span>
+                <span id="failureRisk" class="risk-badge risk-low">Low</span>
+                <div class="metric-box">
+                    <strong>Failure Probability:</strong> <span id="failureProb">0%</span><br>
+                    <strong>Est. Time to Failure:</strong> <span id="ttf">365 days</span>
                 </div>
-                <div class="chart-container">
-                    <canvas id="failureChart"></canvas>
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="failureChart"></canvas>
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-bolt"></i> Overload Risk Classification
-                    </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#overloadInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                    </div>
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-bolt"></i> Overload Risk Classification
                 </div>
-                <div>
-                    <span>Risk Level:</span>
-                    <span id="overloadRisk" class="risk-badge risk-low">Low</span>
-                    <div class="metric-box">
-                        <strong>Current Load:</strong> <span id="loadPct">0%</span><br>
-                        <strong>Peak Phase:</strong> <span id="peakPhase">A</span>
-                    </div>
+                <button class="info-btn" onclick="openModal('overloadInfoModal')" title="Learn More">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+            <div>
+                <span>Risk Level:</span>
+                <span id="overloadRisk" class="risk-badge risk-low">Low</span>
+                <div class="metric-box">
+                    <strong>Current Load:</strong> <span id="loadPct">0%</span><br>
+                    <strong>Peak Phase:</strong> <span id="peakPhase">A</span>
                 </div>
-                <div class="chart-container">
-                    <canvas id="overloadChart"></canvas>
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="overloadChart"></canvas>
             </div>
         </div>
     </div>
 
     <!-- Row 2: Power Quality Index + Voltage Sag -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-tachometer-alt"></i> Power Quality Index
-                    </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#pqiInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                    </div>
+    <div class="graphs-grid">
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-tachometer-alt"></i> Power Quality Index
                 </div>
-                <div>
-                    <span>PQI Score:</span>
-                    <span id="pqiScore">100</span>
-                    <span class="ml-3">Grade:</span>
-                    <span id="pqiGrade" class="risk-badge risk-low">Excellent</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="pqiChart"></canvas>
-                </div>
+                <button class="info-btn" onclick="openModal('pqiInfoModal')" title="Learn More">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+            <div>
+                <span>PQI Score:</span>
+                <span id="pqiScore">100</span>
+                <span style="margin-left: 15px;">Grade:</span>
+                <span id="pqiGrade" class="risk-badge risk-low">Excellent</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="pqiChart"></canvas>
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="ml-card">
-                <div class="ml-card-header">
-                    <div class="ml-card-title">
-                        <i class="fas fa-arrow-down"></i> Voltage Sag Prediction
-                    </div>
-                    <div class="card-actions">
-                        <button class="info-btn" data-toggle="modal" data-target="#sagInfoModal" title="Learn More">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
-                    </div>
+        <div class="ml-card">
+            <div class="ml-card-header">
+                <div class="ml-card-title">
+                    <i class="fas fa-arrow-down"></i> Voltage Sag Prediction
                 </div>
-                <div>
-                    <span>Sag Risk:</span>
-                    <span id="sagRisk" class="risk-badge risk-low">Low</span>
-                    <div class="metric-box">
-                        <strong>Probability:</strong> <span id="sagProb">0%</span><br>
-                        <strong>Expected Duration:</strong> <span id="sagDuration">0 ms</span>
-                    </div>
+                <button class="info-btn" onclick="openModal('sagInfoModal')" title="Learn More">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+            <div>
+                <span>Sag Risk:</span>
+                <span id="sagRisk" class="risk-badge risk-low">Low</span>
+                <div class="metric-box">
+                    <strong>Probability:</strong> <span id="sagProb">0%</span><br>
+                    <strong>Expected Duration:</strong> <span id="sagDuration">0 ms</span>
                 </div>
-                <div class="chart-container">
-                    <canvas id="sagChart"></canvas>
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="sagChart"></canvas>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Equipment Failure Info Modal -->
-<div class="modal fade" id="failureInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+<div class="modal" id="failureInfoModal">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header bg-danger">
                 <h5 class="modal-title"><i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                <button class="close" onclick="closeModal('failureInfoModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
@@ -248,12 +330,12 @@
 </div>
 
 <!-- Overload Risk Info Modal -->
-<div class="modal fade" id="overloadInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+<div class="modal" id="overloadInfoModal">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
+            <div class="modal-header bg-warning">
                 <h5 class="modal-title"><i class="fas fa-bolt"></i> Overload Risk Classification</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button class="close" onclick="closeModal('overloadInfoModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
@@ -286,12 +368,12 @@
 </div>
 
 <!-- Power Quality Index Info Modal -->
-<div class="modal fade" id="pqiInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+<div class="modal" id="pqiInfoModal">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-info">
                 <h5 class="modal-title"><i class="fas fa-tachometer-alt"></i> Power Quality Index</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                <button class="close" onclick="closeModal('pqiInfoModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
@@ -324,12 +406,12 @@
 </div>
 
 <!-- Voltage Sag Info Modal -->
-<div class="modal fade" id="sagInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+<div class="modal" id="sagInfoModal">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header bg-danger">
                 <h5 class="modal-title"><i class="fas fa-arrow-down"></i> Voltage Sag Prediction</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                <button class="close" onclick="closeModal('sagInfoModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
@@ -365,6 +447,22 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // Modal functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.classList.remove('show');
+        }
+    }
+
     // Use global API_URL from base.html
     const token = '{{ request.session.access_token }}';
     let isSimulation = false;
@@ -478,7 +576,6 @@
             const failureData = await failureResp.json();
 
             if (failureData.predictions && failureData.predictions.length > 0) {
-                // Limit to 200 data points
                 const limited = failureData.predictions.slice(-200);
                 failureChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
                 failureChart.data.datasets[0].data = limited.map(p => p.failure_probability);

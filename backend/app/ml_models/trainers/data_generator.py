@@ -51,6 +51,7 @@ class GridDataGenerator:
 
             # Power calculations
             pf = self.base_power_factor + np.random.normal(0, 0.02)
+            pf = max(0.1, min(1.0, pf))  # Clamp to valid range [0.1, 1.0]
             p_a = v_a * i_a * pf / 1000  # kW
             p_b = v_b * i_b * pf / 1000
             p_c = v_c * i_c * pf / 1000
@@ -107,13 +108,14 @@ class GridDataGenerator:
 
             freq = self.nominal_frequency + np.random.normal(0, 0.1)
             pf = self.base_power_factor + np.random.normal(0, 0.05)
+            pf = max(0.1, min(1.0, pf))  # Clamp to valid range [0.1, 1.0]
 
             # Power calculations
             p_a = v_a * i_a * pf / 1000
             p_b = v_b * i_b * pf / 1000
             p_c = v_c * i_c * pf / 1000
 
-            theta = math.acos(max(0.1, min(1.0, pf)))
+            theta = math.acos(pf)
             q_a = v_a * i_a * math.sin(theta) / 1000
             q_b = v_b * i_b * math.sin(theta) / 1000
             q_c = v_c * i_c * math.sin(theta) / 1000
@@ -154,6 +156,7 @@ class GridDataGenerator:
             i_c = i_base * (1 + np.random.normal(0, 0.03))
 
             pf = self.base_power_factor + np.random.normal(0, 0.03)
+            pf = max(0.1, min(1.0, pf))  # Clamp to valid range [0.1, 1.0]
 
             p_a = v_a * i_a * pf / 1000
             p_b = v_b * i_b * pf / 1000
@@ -200,6 +203,7 @@ class GridDataGenerator:
 
             freq = self.nominal_frequency + np.random.normal(0, 0.1)
             pf = self.base_power_factor + np.random.normal(0, 0.03)
+            pf = max(0.1, min(1.0, pf))  # Clamp to valid range [0.1, 1.0]
 
             p_a = v_a * i_a * pf / 1000
             p_b = v_b * i_b * pf / 1000
@@ -292,6 +296,7 @@ class GridDataGenerator:
 
             freq = self.nominal_frequency + np.random.normal(0, 0.05)
             pf = self.base_power_factor + np.random.normal(0, 0.03)
+            pf = max(0.1, min(1.0, pf))  # Clamp to valid range [0.1, 1.0]
 
             p_a = v_a * i_a * pf / 1000
             p_b = v_b * i_b * pf / 1000
@@ -363,6 +368,7 @@ class GridDataGenerator:
             freq = self.nominal_frequency + np.random.normal(0, 0.02)
 
             pf = self.base_power_factor + np.random.normal(0, 0.01)
+            pf = max(0.1, min(1.0, pf))  # Clamp to valid range [0.1, 1.0]
 
             p_a = v_a * i_a * pf / 1000
             p_b = v_b * i_b * pf / 1000

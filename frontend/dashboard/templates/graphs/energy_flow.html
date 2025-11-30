@@ -640,7 +640,7 @@
             }
 
             // Energy Loss Estimation
-            const lossResp = await fetch(`${API_URL}/api/ml/energy/energy-loss${params}&hours=2`, {
+            const lossResp = await fetch(`${API_URL}/api/ml/energy/energy-loss${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const lossData = await lossResp.json();
@@ -703,7 +703,7 @@
             }
 
             // Demand Response Assessment
-            const drResp = await fetch(`${API_URL}/api/ml/energy/demand-response${params}&hours=2`, {
+            const drResp = await fetch(`${API_URL}/api/ml/energy/demand-response${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const drData = await drResp.json();
@@ -754,7 +754,7 @@
         updateVisualizations();
 
         // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 5000);
+        setInterval(updateVisualizations, 30000); // TODO: Replace with WebSocket for real-time updates
     });
 </script>
 {% endblock %}

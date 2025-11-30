@@ -59,7 +59,7 @@ async def get_latest_monitoring_insights(
 
 @router.get("/voltage-anomaly")
 async def get_voltage_anomaly_detection(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -108,7 +108,7 @@ async def get_voltage_anomaly_detection(
 
 @router.get("/harmonic-analysis")
 async def get_harmonic_analysis(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -214,7 +214,7 @@ async def get_frequency_stability(
 
 @router.get("/phase-imbalance")
 async def get_phase_imbalance(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)

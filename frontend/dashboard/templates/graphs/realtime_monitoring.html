@@ -577,7 +577,7 @@
             const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
 
             // Voltage Anomaly Detection
-            const voltageResp = await fetch(`${API_URL}/api/ml/monitoring/voltage-anomaly${params}&hours=2`, {
+            const voltageResp = await fetch(`${API_URL}/api/ml/monitoring/voltage-anomaly${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const voltageData = await voltageResp.json();
@@ -603,7 +603,7 @@
             }
 
             // Harmonic Analysis
-            const harmonicResp = await fetch(`${API_URL}/api/ml/monitoring/harmonic-analysis${params}&hours=2`, {
+            const harmonicResp = await fetch(`${API_URL}/api/ml/monitoring/harmonic-analysis${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const harmonicData = await harmonicResp.json();
@@ -664,7 +664,7 @@
             }
 
             // Phase Imbalance
-            const imbalanceResp = await fetch(`${API_URL}/api/ml/monitoring/phase-imbalance${params}&hours=2`, {
+            const imbalanceResp = await fetch(`${API_URL}/api/ml/monitoring/phase-imbalance${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const imbalanceData = await imbalanceResp.json();
@@ -720,7 +720,7 @@
         updateVisualizations();
 
         // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 5000);
+        setInterval(updateVisualizations, 30000); // TODO: Replace with WebSocket for real-time updates
     });
 </script>
 {% endblock %}

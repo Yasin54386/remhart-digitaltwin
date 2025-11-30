@@ -577,7 +577,7 @@
             console.log('Query params:', params);
 
             // Equipment Failure
-            const failureUrl = `${API_URL}/api/ml/maintenance/equipment-failure${params}&hours=2`;
+            const failureUrl = `${API_URL}/api/ml/maintenance/equipment-failure${params}`;
             console.log('Fetching Equipment Failure from:', failureUrl);
 
             const failureResp = await fetch(failureUrl, {
@@ -619,7 +619,7 @@
             }
 
             // Overload Risk
-            const overloadResp = await fetch(`${API_URL}/api/ml/maintenance/overload-risk${params}&hours=2`, {
+            const overloadResp = await fetch(`${API_URL}/api/ml/maintenance/overload-risk${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const overloadData = await overloadResp.json();
@@ -648,7 +648,7 @@
             }
 
             // Power Quality Index
-            const pqiResp = await fetch(`${API_URL}/api/ml/maintenance/power-quality-index${params}&hours=2`, {
+            const pqiResp = await fetch(`${API_URL}/api/ml/maintenance/power-quality-index${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const pqiData = await pqiResp.json();
@@ -665,7 +665,7 @@
             }
 
             // Voltage Sag
-            const sagResp = await fetch(`${API_URL}/api/ml/maintenance/voltage-sag${params}&hours=2`, {
+            const sagResp = await fetch(`${API_URL}/api/ml/maintenance/voltage-sag${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const sagData = await sagResp.json();
@@ -719,8 +719,8 @@
         updateSimulatorMode();
         updateVisualizations();
 
-        // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 5000);
+        // Auto-refresh every 30 seconds (TODO: Replace with WebSocket for real-time updates)
+        setInterval(updateVisualizations, 30000);
     });
 </script>
 {% endblock %}

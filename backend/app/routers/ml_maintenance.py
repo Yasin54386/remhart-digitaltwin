@@ -52,7 +52,7 @@ async def get_latest_maintenance_insights(
 
 @router.get("/equipment-failure")
 async def get_equipment_failure_prediction(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data (optional, defaults to all data)"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -63,20 +63,24 @@ async def get_equipment_failure_prediction(
     Returns:
         Time-series of failure probability and contributing factors
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    # Only filter by time if hours parameter is provided
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()  # Show oldest to newest for charts
 
     results = []
     for point in data_points:
@@ -101,7 +105,7 @@ async def get_equipment_failure_prediction(
 
 @router.get("/overload-risk")
 async def get_overload_risk_classification(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -112,20 +116,23 @@ async def get_overload_risk_classification(
     Returns:
         Time-series of overload risk levels
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -150,7 +157,7 @@ async def get_overload_risk_classification(
 
 @router.get("/power-quality-index")
 async def get_power_quality_index(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -161,20 +168,23 @@ async def get_power_quality_index(
     Returns:
         Time-series of comprehensive power quality scores
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:
@@ -201,7 +211,7 @@ async def get_power_quality_index(
 
 @router.get("/voltage-sag")
 async def get_voltage_sag_prediction(
-    hours: int = Query(24, description="Hours of historical data"),
+    hours: int = Query(None, description="Hours of historical data"),
     is_simulation: Optional[bool] = Query(None),
     current_user = Depends(get_optional_user),
     db: Session = Depends(get_db)
@@ -212,20 +222,23 @@ async def get_voltage_sag_prediction(
     Returns:
         Time-series of voltage sag probabilities
     """
-    since = datetime.now() - timedelta(hours=hours)
-
     query = db.query(DateTimeTable).options(
         joinedload(DateTimeTable.voltage),
         joinedload(DateTimeTable.current),
         joinedload(DateTimeTable.frequency),
         joinedload(DateTimeTable.active_power),
         joinedload(DateTimeTable.reactive_power)
-    ).filter(DateTimeTable.timestamp >= since)
+    )
+
+    if hours is not None:
+        since = datetime.now() - timedelta(hours=hours)
+        query = query.filter(DateTimeTable.timestamp >= since)
 
     if is_simulation is not None:
         query = query.filter(DateTimeTable.is_simulation == is_simulation)
 
-    data_points = query.order_by(DateTimeTable.timestamp).limit(1000).all()
+    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
+    data_points.reverse()
 
     results = []
     for point in data_points:

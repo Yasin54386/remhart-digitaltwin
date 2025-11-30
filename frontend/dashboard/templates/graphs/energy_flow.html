@@ -1,0 +1,617 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Energy Flow - AI/ML Powered{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ml-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .ml-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #27ae60;
+        padding-bottom: 10px;
+    }
+
+    .ml-card-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .info-icon {
+        cursor: pointer;
+        color: #27ae60;
+        font-size: 20px;
+        transition: color 0.3s;
+    }
+
+    .info-icon:hover {
+        color: #229954;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 30px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 700px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover {
+        color: #000;
+    }
+
+    .modal-section {
+        margin-bottom: 20px;
+    }
+
+    .modal-section h3 {
+        color: #27ae60;
+        margin-bottom: 10px;
+        font-size: 16px;
+    }
+
+    .modal-section p {
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 15px;
+    }
+
+    .metric-box {
+        background: #d5f4e6;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+
+    .metric-box strong {
+        color: #27ae60;
+    }
+
+    .cluster-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .cluster-0 { background: #3498db; color: white; }
+    .cluster-1 { background: #f39c12; color: white; }
+    .cluster-2 { background: #e74c3c; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-bolt"></i> Energy Flow - AI/ML Powered
+            </h2>
+            <p class="text-muted">Energy optimization using 4 AI/ML models for forecasting, loss reduction, and efficiency improvement</p>
+        </div>
+    </div>
+
+    <!-- Data Source Toggle -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="toggle-switch">
+                <label class="switch">
+                    <input type="checkbox" id="dataSourceToggle">
+                    <span class="slider round"></span>
+                </label>
+                <span id="dataSourceLabel" class="ml-2">Real-time Data</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 1: Load Forecasting & Energy Loss -->
+    <div class="row">
+        <!-- Load Forecasting -->
+        <div class="col-md-6">
+            <div class="ml-card">
+                <div class="ml-card-header">
+                    <div class="ml-card-title">
+                        <i class="fas fa-chart-line"></i> Load Forecasting
+                    </div>
+                    <i class="fas fa-info-circle info-icon" onclick="showModal('forecastModal')"></i>
+                </div>
+                <div class="metric-box">
+                    <strong>Current Load:</strong> <span id="currentLoad">0 kW</span><br>
+                    <strong>Trend:</strong> <span id="loadTrend" class="badge badge-info">Stable</span><br>
+                    <strong>Peak Expected:</strong> <span id="peakTime">Hour 0</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Energy Loss Estimation -->
+        <div class="col-md-6">
+            <div class="ml-card">
+                <div class="ml-card-header">
+                    <div class="ml-card-title">
+                        <i class="fas fa-fire"></i> Energy Loss Estimation
+                    </div>
+                    <i class="fas fa-info-circle info-icon" onclick="showModal('lossModal')"></i>
+                </div>
+                <div class="metric-box">
+                    <strong>Current Loss:</strong> <span id="currentLoss">0 kW</span><br>
+                    <strong>Loss %:</strong> <span id="lossPct">0%</span><br>
+                    <strong>Efficiency:</strong> <span id="efficiency">100%</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="lossChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: Power Flow Optimization & Demand Response -->
+    <div class="row">
+        <!-- Power Flow Optimization -->
+        <div class="col-md-6">
+            <div class="ml-card">
+                <div class="ml-card-header">
+                    <div class="ml-card-title">
+                        <i class="fas fa-project-diagram"></i> Power Flow Optimization
+                    </div>
+                    <i class="fas fa-info-circle info-icon" onclick="showModal('flowModal')"></i>
+                </div>
+                <div class="metric-box">
+                    <strong>Rebalancing Needed:</strong> <span id="rebalanceNeeded">No</span><br>
+                    <strong>Potential Savings:</strong> <span id="savings">0%</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="flowChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demand Response -->
+        <div class="col-md-6">
+            <div class="ml-card">
+                <div class="ml-card-header">
+                    <div class="ml-card-title">
+                        <i class="fas fa-users-cog"></i> Demand Response Assessment
+                    </div>
+                    <i class="fas fa-info-circle info-icon" onclick="showModal('drModal')"></i>
+                </div>
+                <div class="metric-box">
+                    <strong>Load Cluster:</strong> <span id="loadCluster" class="cluster-badge cluster-1">Medium</span><br>
+                    <strong>DR Potential:</strong> <span id="drPotential">0 kW</span><br>
+                    <strong>Flexibility Score:</strong> <span id="flexScore">0</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="drChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="forecastModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('forecastModal')">&times;</span>
+        <h2><i class="fas fa-chart-line"></i> Load Forecasting</h2>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-robot"></i> Algorithm</h3>
+            <p><strong>Prophet / LSTM (Long Short-Term Memory)</strong></p>
+            <p>Time-series forecasting using Facebook's Prophet algorithm or LSTM neural networks. Captures daily, weekly, and seasonal patterns. Predicts next 24 hours of load demand based on historical patterns and trends.</p>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-database"></i> Training Dataset</h3>
+            <p><strong>30 days of time-series load data:</strong></p>
+            <ul>
+                <li>Hourly samples capturing daily load patterns</li>
+                <li>Peak hours (9-17h, 17-22h) with higher loads</li>
+                <li>Off-peak hours (0-6h) with lower loads</li>
+                <li>Weekend vs. weekday variations (20% lower on weekends)</li>
+                <li>Load ramp-up patterns in morning (6-9h)</li>
+            </ul>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
+            <ul>
+                <li>✓ Enables optimal generator scheduling and dispatch</li>
+                <li>✓ Reduces fuel costs through efficient resource allocation</li>
+                <li>✓ Improves grid reliability during peak demand</li>
+                <li>✓ Supports renewable energy integration planning</li>
+                <li>✓ Reduces need for expensive spinning reserves</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div id="lossModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('lossModal')">&times;</span>
+        <h2><i class="fas fa-fire"></i> Energy Loss Estimation</h2>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-robot"></i> Algorithm</h3>
+            <p><strong>Linear Regression with I²R Loss Model</strong></p>
+            <p>Physics-based regression model using I²R relationship for resistive losses. Incorporates current magnitude, power flow, phase imbalance, and power factor. Estimates transmission and distribution losses.</p>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-database"></i> Training Dataset</h3>
+            <p><strong>Physics-based loss calculations:</strong></p>
+            <ul>
+                <li>Resistive losses (I²R): 70% of total losses</li>
+                <li>Reactive power losses: 20% of total losses</li>
+                <li>Imbalance-induced losses: 10% of total losses</li>
+                <li>Features: Current, power, imbalance %, power factor</li>
+            </ul>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
+            <ul>
+                <li>✓ Identifies inefficiency sources in real-time</li>
+                <li>✓ Guides conductor sizing and upgrade decisions</li>
+                <li>✓ Calculates ROI for efficiency improvements</li>
+                <li>✓ Reduces energy costs through loss minimization</li>
+                <li>✓ Supports regulatory reporting requirements</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div id="flowModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('flowModal')">&times;</span>
+        <h2><i class="fas fa-project-diagram"></i> Power Flow Optimization</h2>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-robot"></i> Algorithm</h3>
+            <p><strong>Linear Programming Optimization</strong></p>
+            <p>Constrained optimization to minimize losses while satisfying power flow equations. Balances load distribution across phases to reduce neutral current and minimize I²R losses. Suggests optimal switching configurations.</p>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-database"></i> Training Dataset</h3>
+            <p><strong>Rule-based optimization scenarios:</strong></p>
+            <ul>
+                <li>Power flow equations (P = VI cos θ)</li>
+                <li>Kirchhoff's current and voltage laws</li>
+                <li>Phase balance constraints</li>
+                <li>Voltage regulation limits (±5%)</li>
+                <li>Thermal loading limits</li>
+            </ul>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
+            <ul>
+                <li>✓ Minimizes transmission losses (2-5% reduction)</li>
+                <li>✓ Improves voltage profiles throughout network</li>
+                <li>✓ Reduces operational costs significantly</li>
+                <li>✓ Extends equipment life through balanced loading</li>
+                <li>✓ Supports real-time operational decisions</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div id="drModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('drModal')">&times;</span>
+        <h2><i class="fas fa-users-cog"></i> Demand Response Assessment</h2>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-robot"></i> Algorithm</h3>
+            <p><strong>K-Means Clustering</strong></p>
+            <p>Unsupervised learning that groups similar load patterns into clusters. Identifies 3 load categories: Low-load (cluster 0), Medium-load (cluster 1), High-load (cluster 2). Assesses demand response potential based on load flexibility.</p>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-database"></i> Training Dataset</h3>
+            <p><strong>Load profile clustering:</strong></p>
+            <ul>
+                <li>Load magnitude features (current, power)</li>
+                <li>Load variability (standard deviation)</li>
+                <li>Time-of-use patterns</li>
+                <li>3 clusters representing load categories</li>
+                <li>DR potential = 15% of current load</li>
+            </ul>
+        </div>
+
+        <div class="modal-section">
+            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
+            <ul>
+                <li>✓ Identifies demand response opportunities</li>
+                <li>✓ Reduces peak demand charges (15-30% savings)</li>
+                <li>✓ Supports time-of-use pricing programs</li>
+                <li>✓ Improves grid stability during high demand</li>
+                <li>✓ Enables customer engagement in energy management</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const API_URL = '{{ api_url }}';
+    const token = '{{ request.session.access_token }}';
+    let isSimulation = false;
+
+    let forecastChart, lossChart, flowChart, drChart;
+
+    function initCharts() {
+        // Load Forecast Chart
+        const forecastCtx = document.getElementById('forecastChart').getContext('2d');
+        forecastChart = new Chart(forecastCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Historical Load (kW)',
+                    data: [],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Forecast (kW)',
+                    data: [],
+                    borderColor: '#e74c3c',
+                    borderDash: [5, 5],
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Load (kW)' } }
+                }
+            }
+        });
+
+        // Energy Loss Chart
+        const lossCtx = document.getElementById('lossChart').getContext('2d');
+        lossChart = new Chart(lossCtx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Resistive Loss',
+                    data: [],
+                    backgroundColor: '#e74c3c'
+                }, {
+                    label: 'Reactive Loss',
+                    data: [],
+                    backgroundColor: '#f39c12'
+                }, {
+                    label: 'Imbalance Loss',
+                    data: [],
+                    backgroundColor: '#95a5a6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Loss (kW)' } }
+                }
+            }
+        });
+
+        // Power Flow Chart
+        const flowCtx = document.getElementById('flowChart').getContext('2d');
+        flowChart = new Chart(flowCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Phase A', 'Phase B', 'Phase C'],
+                datasets: [{
+                    label: 'Current Distribution (kW)',
+                    data: [0, 0, 0],
+                    backgroundColor: ['#3498db', '#2ecc71', '#9b59b6']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Power (kW)' } }
+                }
+            }
+        });
+
+        // Demand Response Chart
+        const drCtx = document.getElementById('drChart').getContext('2d');
+        drChart = new Chart(drCtx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Load Points',
+                    data: [],
+                    backgroundColor: 'rgba(52, 152, 219, 0.5)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Load (kW)' } },
+                    y: { title: { display: true, text: 'Variability' } }
+                }
+            }
+        });
+    }
+
+    async function updateVisualizations() {
+        try {
+            const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
+
+            // Load Forecast
+            const forecastResp = await fetch(`${API_URL}/api/ml/energy/load-forecast${params}&hours=6`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const forecastData = await forecastResp.json();
+            updateForecastChart(forecastData);
+
+            // Energy Loss
+            const lossResp = await fetch(`${API_URL}/api/ml/energy/energy-loss${params}&hours=2`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const lossData = await lossResp.json();
+            updateLossChart(lossData.data);
+
+            // Power Flow
+            const flowResp = await fetch(`${API_URL}/api/ml/energy/power-flow-optimization${params}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const flowData = await flowResp.json();
+            updateFlowChart(flowData);
+
+            // Demand Response
+            const drResp = await fetch(`${API_URL}/api/ml/energy/demand-response${params}&hours=2`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const drData = await drResp.json();
+            updateDRChart(drData.data);
+
+        } catch (error) {
+            console.error('Error fetching ML data:', error);
+        }
+    }
+
+    function updateForecastChart(data) {
+        if (!data.historical || data.historical.length === 0) return;
+
+        const histLabels = data.historical.slice(-30).map(d => new Date(d.timestamp).toLocaleTimeString());
+        const histData = data.historical.slice(-30).map(d => d.load_kw);
+
+        const forecastLabels = data.forecast.hourly_forecast.map((_, i) => `+${i+1}h`);
+        const allLabels = [...histLabels, ...forecastLabels];
+
+        forecastChart.data.labels = allLabels;
+        forecastChart.data.datasets[0].data = [...histData, ...Array(forecastLabels.length).fill(null)];
+        forecastChart.data.datasets[1].data = [...Array(histLabels.length).fill(null), ...data.forecast.hourly_forecast];
+        forecastChart.update();
+
+        document.getElementById('currentLoad').textContent = `${data.forecast.current_load_kw.toFixed(1)} kW`;
+        document.getElementById('loadTrend').textContent = data.forecast.trend;
+        document.getElementById('peakTime').textContent = `Hour ${data.forecast.peak_load_time}`;
+    }
+
+    function updateLossChart(data) {
+        if (!data || data.length === 0) return;
+
+        const latest = data[data.length - 1];
+        const recent = data.slice(-10);
+
+        lossChart.data.labels = recent.map(d => new Date(d.timestamp).toLocaleTimeString());
+        lossChart.data.datasets[0].data = recent.map(d => d.loss_breakdown.resistive_loss);
+        lossChart.data.datasets[1].data = recent.map(d => d.loss_breakdown.reactive_loss);
+        lossChart.data.datasets[2].data = recent.map(d => d.loss_breakdown.imbalance_loss);
+        lossChart.update();
+
+        document.getElementById('currentLoss').textContent = `${latest.loss_kw.toFixed(2)} kW`;
+        document.getElementById('lossPct').textContent = `${latest.loss_percentage.toFixed(2)}%`;
+        document.getElementById('efficiency').textContent = `${latest.efficiency.toFixed(2)}%`;
+    }
+
+    function updateFlowChart(data) {
+        if (!data.current_state) return;
+
+        flowChart.data.datasets[0].data = [
+            data.current_state.phase_distribution.phase_a,
+            data.current_state.phase_distribution.phase_b,
+            data.current_state.phase_distribution.phase_c
+        ];
+        flowChart.update();
+
+        document.getElementById('rebalanceNeeded').textContent = data.optimization.rebalancing_needed ? 'Yes' : 'No';
+        document.getElementById('savings').textContent = `${data.optimization.potential_savings_pct.toFixed(1)}%`;
+    }
+
+    function updateDRChart(data) {
+        if (!data || data.length === 0) return;
+
+        const latest = data[data.length - 1];
+        const scatterData = data.slice(-50).map(d => ({
+            x: d.load_kw,
+            y: d.flexibility_score
+        }));
+
+        drChart.data.datasets[0].data = scatterData;
+        drChart.update();
+
+        const clusterNames = ['Low-Load', 'Medium-Load', 'High-Load'];
+        document.getElementById('loadCluster').textContent = clusterNames[latest.load_cluster];
+        document.getElementById('loadCluster').className = `cluster-badge cluster-${latest.load_cluster}`;
+        document.getElementById('drPotential').textContent = `${latest.dr_potential_kw.toFixed(1)} kW`;
+        document.getElementById('flexScore').textContent = latest.flexibility_score.toFixed(1);
+    }
+
+    function showModal(modalId) {
+        document.getElementById(modalId).style.display = 'block';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    document.getElementById('dataSourceToggle').addEventListener('change', function() {
+        isSimulation = this.checked;
+        document.getElementById('dataSourceLabel').textContent = isSimulation ? 'Simulator Data' : 'Real-time Data';
+        updateVisualizations();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        updateVisualizations();
+        setInterval(updateVisualizations, 5000);
+    });
+</script>
+{% endblock %}

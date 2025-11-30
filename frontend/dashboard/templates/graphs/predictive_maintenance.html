@@ -11,6 +11,7 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         padding: 20px;
         margin-bottom: 20px;
+        height: 500px;
     }
 
     .ml-card-header {
@@ -39,53 +40,18 @@
         color: #c0392b;
     }
 
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 15px;
     }
 
-    .modal-content {
-        background-color: white;
-        margin: 5% auto;
-        padding: 30px;
-        border-radius: 8px;
-        width: 80%;
-        max-width: 700px;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-
-    .close {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close:hover {
-        color: #000;
-    }
-
-    .modal-section {
-        margin-bottom: 20px;
-    }
-
-    .modal-section h3 {
-        color: #e74c3c;
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-
-    .modal-section p {
-        color: #555;
-        line-height: 1.6;
+    .metric-box {
+        background: #fee;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-size: 14px;
     }
 
     .risk-badge {
@@ -99,28 +65,6 @@
     .risk-low { background: #2ecc71; color: white; }
     .risk-medium { background: #f39c12; color: white; }
     .risk-high { background: #e74c3c; color: white; }
-
-    .grade-excellent { background: #2ecc71; color: white; }
-    .grade-good { background: #3498db; color: white; }
-    .grade-fair { background: #f39c12; color: white; }
-    .grade-poor { background: #e74c3c; color: white; }
-
-    .chart-container {
-        position: relative;
-        height: 300px;
-        margin-top: 15px;
-    }
-
-    .metric-box {
-        background: #ecf0f1;
-        padding: 10px;
-        border-radius: 5px;
-        margin-top: 10px;
-    }
-
-    .metric-box strong {
-        color: #2c3e50;
-    }
 </style>
 {% endblock %}
 
@@ -131,33 +75,29 @@
             <h2 class="mb-3">
                 <i class="fas fa-tools"></i> Predictive Maintenance - AI/ML Powered
             </h2>
-            <p class="text-muted">Advanced predictive analytics using 4 AI/ML models to prevent equipment failures and optimize maintenance</p>
+            <p class="text-muted">Advanced predictive analytics using 4 AI/ML models</p>
         </div>
     </div>
 
     <!-- Data Source Toggle -->
     <div class="row mb-3">
         <div class="col-12">
-            <div class="toggle-switch">
-                <label class="switch">
-                    <input type="checkbox" id="dataSourceToggle">
-                    <span class="slider round"></span>
-                </label>
-                <span id="dataSourceLabel" class="ml-2">Real-time Data</span>
-            </div>
+            <label class="switch">
+                <input type="checkbox" id="dataSourceToggle">
+                <span class="slider round"></span>
+            </label>
+            <span id="dataSourceLabel" class="ml-2">Real-time Data</span>
         </div>
     </div>
 
-    <!-- Row 1: Equipment Failure & Overload Risk -->
+    <!-- Row 1: 2 columns -->
     <div class="row">
-        <!-- Equipment Failure Prediction -->
         <div class="col-md-6">
             <div class="ml-card">
                 <div class="ml-card-header">
                     <div class="ml-card-title">
                         <i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction
                     </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('failureModal')"></i>
                 </div>
                 <div>
                     <span>Risk Level:</span>
@@ -173,14 +113,12 @@
             </div>
         </div>
 
-        <!-- Overload Risk -->
         <div class="col-md-6">
             <div class="ml-card">
                 <div class="ml-card-header">
                     <div class="ml-card-title">
                         <i class="fas fa-bolt"></i> Overload Risk Classification
                     </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('overloadModal')"></i>
                 </div>
                 <div>
                     <span>Risk Level:</span>
@@ -197,22 +135,20 @@
         </div>
     </div>
 
-    <!-- Row 2: Power Quality Index & Voltage Sag -->
+    <!-- Row 2: 2 columns -->
     <div class="row">
-        <!-- Power Quality Index -->
         <div class="col-md-6">
             <div class="ml-card">
                 <div class="ml-card-header">
                     <div class="ml-card-title">
                         <i class="fas fa-tachometer-alt"></i> Power Quality Index
                     </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('pqiModal')"></i>
                 </div>
                 <div>
                     <span>PQI Score:</span>
                     <span id="pqiScore">100</span>
                     <span class="ml-3">Grade:</span>
-                    <span id="pqiGrade" class="risk-badge grade-excellent">Excellent</span>
+                    <span id="pqiGrade" class="risk-badge risk-low">Excellent</span>
                 </div>
                 <div class="chart-container">
                     <canvas id="pqiChart"></canvas>
@@ -220,14 +156,12 @@
             </div>
         </div>
 
-        <!-- Voltage Sag Prediction -->
         <div class="col-md-6">
             <div class="ml-card">
                 <div class="ml-card-header">
                     <div class="ml-card-title">
                         <i class="fas fa-arrow-down"></i> Voltage Sag Prediction
                     </div>
-                    <i class="fas fa-info-circle info-icon" onclick="showModal('sagModal')"></i>
                 </div>
                 <div>
                     <span>Sag Risk:</span>
@@ -244,153 +178,6 @@
         </div>
     </div>
 </div>
-
-<!-- Modals -->
-<div id="failureModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('failureModal')">&times;</span>
-        <h2><i class="fas fa-exclamation-circle"></i> Equipment Failure Prediction</h2>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>XGBoost (Extreme Gradient Boosting)</strong></p>
-            <p>Advanced ensemble learning method using gradient boosting with decision trees. Combines multiple weak predictors to create a strong predictive model. Excellent for handling complex feature interactions and imbalanced datasets.</p>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>Synthetic data based on equipment stress indicators:</strong></p>
-            <ul>
-                <li>High current conditions (> 75A)</li>
-                <li>Voltage variance (power quality issues)</li>
-                <li>Current variance (load fluctuations)</li>
-                <li>Poor power factor (< 0.85)</li>
-                <li>Phase imbalance (> 10%)</li>
-                <li>Risk scoring algorithm combining all factors</li>
-            </ul>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Prevents unexpected equipment failures and downtime</li>
-                <li>✓ Optimizes maintenance scheduling (condition-based vs. time-based)</li>
-                <li>✓ Reduces emergency repair costs by 40-60%</li>
-                <li>✓ Extends equipment lifespan through proactive intervention</li>
-                <li>✓ Improves safety by identifying at-risk equipment</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-<div id="overloadModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('overloadModal')">&times;</span>
-        <h2><i class="fas fa-bolt"></i> Overload Risk Classification</h2>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>SVM (Support Vector Machine)</strong></p>
-            <p>Supervised learning algorithm that finds optimal hyperplane to separate risk classes. Uses kernel functions to handle non-linear relationships. Effective for multi-class classification (Low/Medium/High risk).</p>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>500 samples with varying load conditions:</strong></p>
-            <ul>
-                <li>Normal load (50-70% of rated): 200 samples</li>
-                <li>Moderate overload (70-85%): 150 samples</li>
-                <li>Heavy overload (85-100%): 100 samples</li>
-                <li>Critical overload (> 100%): 50 samples</li>
-                <li>Features: Current, power, phase imbalance</li>
-            </ul>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Prevents transformer and conductor overheating</li>
-                <li>✓ Enables proactive load shedding decisions</li>
-                <li>✓ Identifies unbalanced phase loading early</li>
-                <li>✓ Reduces risk of catastrophic failures</li>
-                <li>✓ Supports capacity planning and upgrade decisions</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-<div id="pqiModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('pqiModal')">&times;</span>
-        <h2><i class="fas fa-tachometer-alt"></i> Power Quality Index</h2>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>Neural Network (Multi-layer Perceptron)</strong></p>
-            <p>Deep learning model with multiple hidden layers that learns complex relationships between power quality metrics. Combines voltage quality (40%), frequency quality (30%), and power factor quality (30%) into single comprehensive score.</p>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>Comprehensive power quality dataset:</strong></p>
-            <ul>
-                <li>Voltage deviation measurements</li>
-                <li>Frequency deviation data</li>
-                <li>Power factor values</li>
-                <li>Voltage variance (THD proxy)</li>
-                <li>Phase imbalance percentages</li>
-                <li>PQI scores calculated using weighted formula</li>
-            </ul>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Single metric for overall power quality assessment</li>
-                <li>✓ Prioritizes improvement investments effectively</li>
-                <li>✓ Ensures regulatory compliance (IEEE 1159, IEC 61000)</li>
-                <li>✓ Tracks power quality trends over time</li>
-                <li>✓ Identifies root causes of quality degradation</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-<div id="sagModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('sagModal')">&times;</span>
-        <h2><i class="fas fa-arrow-down"></i> Voltage Sag Prediction</h2>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-robot"></i> Algorithm</h3>
-            <p><strong>Random Forest Classifier</strong></p>
-            <p>Ensemble of decision trees that vote on sag likelihood. Uses voltage level, variance, and rate of change to predict imminent sag events (voltage < 0.9 pu). Provides probability estimates for event occurrence.</p>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-database"></i> Training Dataset</h3>
-            <p><strong>Voltage sag scenarios:</strong></p>
-            <ul>
-                <li>Normal voltage conditions (> 0.9 pu): 350 samples</li>
-                <li>Pre-sag conditions (trending downward): 100 samples</li>
-                <li>Voltage sag events (< 0.9 pu): 50 samples</li>
-                <li>Features: Voltage average, variance, deviation, trend</li>
-            </ul>
-        </div>
-
-        <div class="modal-section">
-            <h3><i class="fas fa-check-circle"></i> Operator Benefits</h3>
-            <ul>
-                <li>✓ Protects sensitive electronic equipment from sags</li>
-                <li>✓ Enables installation of protective devices before events</li>
-                <li>✓ Reduces production losses from unexpected shutdowns</li>
-                <li>✓ Identifies affected phases for targeted mitigation</li>
-                <li>✓ Supports power quality improvement planning</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -399,10 +186,11 @@
     const API_URL = '{{ api_url }}';
     const token = '{{ request.session.access_token }}';
     let isSimulation = false;
-
     let failureChart, overloadChart, pqiChart, sagChart;
 
     function initCharts() {
+        console.log('Initializing charts...');
+
         // Equipment Failure Chart
         const failureCtx = document.getElementById('failureChart').getContext('2d');
         failureChart = new Chart(failureCtx, {
@@ -422,7 +210,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Probability (%)' } }
+                    y: { beginAtZero: true, max: 100 }
                 }
             }
         });
@@ -445,21 +233,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, max: 120, title: { display: true, text: 'Load (%)' } }
-                },
-                plugins: {
-                    annotation: {
-                        annotations: {
-                            line1: {
-                                type: 'line',
-                                yMin: 85,
-                                yMax: 85,
-                                borderColor: 'red',
-                                borderWidth: 2,
-                                borderDash: [5, 5]
-                            }
-                        }
-                    }
+                    y: { beginAtZero: true, max: 120 }
                 }
             }
         });
@@ -480,7 +254,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score' } }
+                    y: { beginAtZero: true, max: 100 }
                 }
             }
         });
@@ -503,21 +277,31 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Probability (%)' } }
+                    y: { beginAtZero: true, max: 100 }
                 }
             }
         });
+
+        console.log('Charts initialized successfully');
     }
 
     async function updateVisualizations() {
         try {
             const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
+            console.log('Fetching ML data...', API_URL);
 
             // Equipment Failure
             const failureResp = await fetch(`${API_URL}/api/ml/maintenance/equipment-failure${params}&hours=2`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+
+            if (!failureResp.ok) {
+                console.error('Failure API error:', failureResp.status);
+                return;
+            }
+
             const failureData = await failureResp.json();
+            console.log('Failure data:', failureData);
             updateFailureChart(failureData.data);
 
             // Overload Risk
@@ -547,11 +331,14 @@
     }
 
     function updateFailureChart(data) {
-        if (!data || data.length === 0) return;
+        if (!data || data.length === 0) {
+            console.log('No failure data');
+            return;
+        }
 
         const latest = data[data.length - 1];
-        const labels = data.slice(-50).map(d => new Date(d.timestamp).toLocaleTimeString());
-        const probs = data.slice(-50).map(d => d.failure_probability * 100);
+        const labels = data.slice(-30).map(d => new Date(d.timestamp).toLocaleTimeString());
+        const probs = data.slice(-30).map(d => d.failure_probability * 100);
 
         failureChart.data.labels = labels;
         failureChart.data.datasets[0].data = probs;
@@ -569,8 +356,8 @@
         if (!data || data.length === 0) return;
 
         const latest = data[data.length - 1];
-        const labels = data.slice(-50).map(d => new Date(d.timestamp).toLocaleTimeString());
-        const loads = data.slice(-50).map(d => d.current_load_pct);
+        const labels = data.slice(-30).map(d => new Date(d.timestamp).toLocaleTimeString());
+        const loads = data.slice(-30).map(d => d.current_load_pct);
 
         overloadChart.data.labels = labels;
         overloadChart.data.datasets[0].data = loads;
@@ -597,18 +384,14 @@
 
         document.getElementById('pqiScore').textContent = latest.pqi_score.toFixed(1);
         document.getElementById('pqiGrade').textContent = latest.grade;
-        document.getElementById('pqiGrade').className =
-            latest.grade === 'Excellent' ? 'risk-badge grade-excellent' :
-            latest.grade === 'Good' ? 'risk-badge grade-good' :
-            latest.grade === 'Fair' ? 'risk-badge grade-fair' : 'risk-badge grade-poor';
     }
 
     function updateSagChart(data) {
         if (!data || data.length === 0) return;
 
         const latest = data[data.length - 1];
-        const labels = data.slice(-50).map(d => new Date(d.timestamp).toLocaleTimeString());
-        const probs = data.slice(-50).map(d => d.sag_probability * 100);
+        const labels = data.slice(-30).map(d => new Date(d.timestamp).toLocaleTimeString());
+        const probs = data.slice(-30).map(d => d.sag_probability * 100);
 
         sagChart.data.labels = labels;
         sagChart.data.datasets[0].data = probs;
@@ -622,14 +405,6 @@
         document.getElementById('sagDuration').textContent = `${latest.expected_duration_ms} ms`;
     }
 
-    function showModal(modalId) {
-        document.getElementById(modalId).style.display = 'block';
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
     document.getElementById('dataSourceToggle').addEventListener('change', function() {
         isSimulation = this.checked;
         document.getElementById('dataSourceLabel').textContent = isSimulation ? 'Simulator Data' : 'Real-time Data';
@@ -637,6 +412,7 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
         initCharts();
         updateVisualizations();
         setInterval(updateVisualizations, 5000);

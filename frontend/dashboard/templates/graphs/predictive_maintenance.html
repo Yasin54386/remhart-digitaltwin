@@ -583,7 +583,7 @@
                 sagChart.data.datasets[0].data = limited.map(p => p.sag_probability);
                 sagChart.update();
 
-                const latest = limited[latest.length - 1];
+                const latest = limited[limited.length - 1];
                 document.getElementById('sagProb').textContent = latest.sag_probability.toFixed(1) + '%';
                 document.getElementById('sagDuration').textContent = latest.expected_duration_ms + ' ms';
 

@@ -98,8 +98,9 @@ class ModelTrainer:
         """Train Isolation Forest for voltage anomaly detection"""
         print("\n[1/16] Training Voltage Anomaly Detector (Isolation Forest)...")
 
-        # Features for voltage anomaly detection
-        features = ['v_avg', 'v_variance', 'v_imbalance', 'v_deviation']
+        # Features MUST match model_manager.py exactly!
+        # Lines 109-114 of model_manager.py use these 5 features:
+        features = ['v_avg', 'v_variance', 'v_imbalance_pct', 'v_deviation_pct', 'v_rate_of_change']
         X = self.df[features].fillna(0)
 
         # Isolation Forest (unsupervised)
@@ -233,7 +234,8 @@ class ModelTrainer:
 
         self.df['failure_risk'] = self.df.apply(get_failure_label, axis=1)
 
-        features = ['i_avg', 'i_variance', 'v_variance', 'power_factor', 'v_imbalance']
+        # Features MUST match model_manager.py lines 239-245 exactly!
+        features = ['i_avg', 'i_variance', 'v_variance', 'power_factor', 'i_spike_detected', 'v_imbalance_pct']
         X = self.df[features].fillna(0)
         y = self.df['failure_risk']
 

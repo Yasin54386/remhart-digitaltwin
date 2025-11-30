@@ -153,22 +153,27 @@
     // Fetch initial data via HTTP
     async function loadInitialData() {
         try {
+            // Build URL with mode-specific parameters
             let url = `${API_URL}/api/grid/data?limit=50`;
-            
+
+            if (isSimulatorMode) {
+                url += `&is_simulation=true`;
+                if (activeSimulationId) {
+                    url += `&simulation_id=${activeSimulationId}`;
+                }
+            } else {
+                url += `&is_simulation=false`;
+            }
+
             const headers = {};
             if (authToken) {
                 headers['Authorization'] = `Bearer ${authToken}`;
             }
-            
+
             const response = await fetch(url, { headers });
-            const allData = await response.json();
-            
-            // Filter data based on mode
-            const data = isSimulatorMode 
-                ? allData.filter(item => item.is_simulation && item.simulation_id === activeSimulationId)
-                : allData.filter(item => !item.is_simulation);
-            
-            console.log(`Loaded ${data.length} ${isSimulatorMode ? 'simulation' : 'real-time'} data points`);
+            const data = await response.json();
+
+            console.log(`Loaded ${data.length} ${isSimulatorMode ? 'simulation' : 'real-time'} data points from backend`);
             
             // Clear charts
             voltageChart.data.labels = [];

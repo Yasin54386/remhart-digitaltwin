@@ -94,37 +94,51 @@ async def get_grid_data(
     offset: int = Query(default=0, ge=0, description="Number of records to skip"),
     start_time: Optional[datetime] = Query(default=None, description="Start time filter"),
     end_time: Optional[datetime] = Query(default=None, description="End time filter"),
+    is_simulation: Optional[bool] = Query(default=None, description="Filter by simulation mode (true) or real-time (false)"),
+    simulation_id: Optional[str] = Query(default=None, description="Filter by specific simulation ID"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Get grid data with optional filters.
-    
+
     Returns time-series grid data for visualization and analysis.
-    
+
     Args:
         limit: Maximum number of records (1-1000)
         offset: Records to skip for pagination
         start_time: Filter data after this time
         end_time: Filter data before this time
+        is_simulation: Filter by simulation (true) or real-time (false) data
+        simulation_id: Filter by specific simulation ID (requires is_simulation=true)
         db: Database session
         current_user: Authenticated user
-        
+
     Returns:
         List of grid data points
-        
-    Example:
+
+    Examples:
         GET /api/grid/data?limit=50&start_time=2025-01-15T00:00:00
+        GET /api/grid/data?limit=50&is_simulation=false
+        GET /api/grid/data?limit=50&is_simulation=true&simulation_id=abc123
     """
     # Build query
     query = db.query(DateTimeTable).order_by(desc(DateTimeTable.timestamp))
-    
+
     # Apply time filters
     if start_time:
         query = query.filter(DateTimeTable.timestamp >= start_time)
     if end_time:
         query = query.filter(DateTimeTable.timestamp <= end_time)
-    
+
+    # Apply simulation mode filters
+    if is_simulation is not None:
+        query = query.filter(DateTimeTable.is_simulation == is_simulation)
+
+    # Apply simulation ID filter (only if is_simulation is True)
+    if simulation_id is not None:
+        query = query.filter(DateTimeTable.simulation_id == simulation_id)
+
     # Apply pagination
     query = query.offset(offset).limit(limit)
     
@@ -163,9 +177,13 @@ async def get_grid_data(
                 "phaseB": dt_record.reactive_power[0].phaseB if dt_record.reactive_power else 0,
                 "phaseC": dt_record.reactive_power[0].phaseC if dt_record.reactive_power else 0,
                 "total": dt_record.reactive_power[0].total if dt_record.reactive_power else 0
-            }
+            },
+            "is_simulation": dt_record.is_simulation if hasattr(dt_record, 'is_simulation') else False,
+            "simulation_id": dt_record.simulation_id if hasattr(dt_record, 'simulation_id') else None,
+            "simulation_name": dt_record.simulation_name if hasattr(dt_record, 'simulation_name') else None,
+            "simulation_scenario": dt_record.simulation_scenario if hasattr(dt_record, 'simulation_scenario') else None
         })
-    
+
     return result
 
 

@@ -271,25 +271,41 @@ class ModelManager:
         Returns:
             Overload risk classification
         """
-        model = self.models.get('overload_risk')
-        if model is None:
+        model_data = self.models.get('overload_risk')
+        if model_data is None:
             return self._mock_overload_risk(features)
 
-        X = np.array([[
-            features['i_avg'],
-            features['p_total'],
-            features['i_max_phase'],
-            features['i_imbalance_pct']
-        ]])
+        try:
+            # Unwrap model and scaler from dict
+            if isinstance(model_data, dict):
+                model = model_data['model']
+                scaler = model_data['scaler']
+            else:
+                model = model_data
+                scaler = None
 
-        risk_class = model.predict(X)[0]
+            X = np.array([[
+                features['i_avg'],
+                features['p_total'],
+                features['i_max_phase'],
+                features['i_imbalance_pct']
+            ]])
 
-        return {
-            'risk_level': risk_class,  # 'Low', 'Medium', 'High'
-            'current_load_pct': self._calculate_load_percentage(features),
-            'peak_phase': self._identify_peak_phase(features),
-            'mitigation_needed': risk_class in ['Medium', 'High']
-        }
+            # Apply scaler if available
+            if scaler is not None:
+                X = scaler.transform(X)
+
+            risk_class = model.predict(X)[0]
+
+            return {
+                'risk_level': risk_class,  # 'Low', 'Medium', 'High'
+                'current_load_pct': self._calculate_load_percentage(features),
+                'peak_phase': self._identify_peak_phase(features),
+                'mitigation_needed': risk_class in ['Medium', 'High']
+            }
+        except Exception as e:
+            logger.warning(f"Overload risk classification failed, using mock: {e}")
+            return self._mock_overload_risk(features)
 
     def calculate_power_quality_index(self, features: Dict) -> Dict[str, Any]:
         """
@@ -567,24 +583,40 @@ class ModelManager:
         Returns:
             Dispatch recommendations
         """
-        model = self.models.get('optimal_dispatch')
-        if model is None:
+        model_data = self.models.get('optimal_dispatch')
+        if model_data is None:
             return self._mock_optimal_dispatch(features)
 
-        X = np.array([[
-            features['p_total'],
-            features['active_power_mean'],
-            features['active_power_trend']
-        ]])
+        try:
+            # Unwrap model and scaler from dict
+            if isinstance(model_data, dict):
+                model = model_data['model']
+                scaler = model_data['scaler']
+            else:
+                model = model_data
+                scaler = None
 
-        optimal_generation = model.predict(X)[0]
+            X = np.array([[
+                features['p_total'],
+                features['active_power_mean'],
+                features['active_power_trend']
+            ]])
 
-        return {
-            'current_load_kw': features['p_total'],
-            'recommended_generation_kw': float(optimal_generation),
-            'reserve_margin_pct': ((optimal_generation - features['p_total']) / features['p_total'] * 100) if features['p_total'] > 0 else 0,
-            'dispatch_plan': self._create_dispatch_plan(optimal_generation, features)
-        }
+            # Apply scaler if available
+            if scaler is not None:
+                X = scaler.transform(X)
+
+            optimal_generation = model.predict(X)[0]
+
+            return {
+                'current_load_kw': features['p_total'],
+                'recommended_generation_kw': float(optimal_generation),
+                'reserve_margin_pct': ((optimal_generation - features['p_total']) / features['p_total'] * 100) if features['p_total'] > 0 else 0,
+                'dispatch_plan': self._create_dispatch_plan(optimal_generation, features)
+            }
+        except Exception as e:
+            logger.warning(f"Optimal dispatch prediction failed, using mock: {e}")
+            return self._mock_optimal_dispatch(features)
 
     # ==================== HELPER METHODS ====================
 

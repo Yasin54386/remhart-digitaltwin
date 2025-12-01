@@ -83,15 +83,26 @@ async def get_equipment_failure_prediction(
     data_points.reverse()  # Show oldest to newest for charts
 
     results = []
+    total_points = len(data_points)
+    skipped_count = 0
+    error_count = 0
+
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
 
-        # Skip if ML inference failed
-        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+        # Track errors
+        if 'error' in predictions:
+            error_count += 1
+            continue
+
+        # Track missing maintenance predictions
+        if not predictions.get('predictive_maintenance'):
+            skipped_count += 1
             continue
 
         failure = predictions['predictive_maintenance'].get('equipment_failure_prediction')
         if not failure:
+            skipped_count += 1
             continue
 
         results.append({
@@ -106,7 +117,14 @@ async def get_equipment_failure_prediction(
         "algorithm": "XGBoost (Gradient Boosting)",
         "training_dataset": "Synthetic data based on equipment stress indicators: high current, voltage/current variance, poor power factor, imbalances",
         "benefits": "Prevents unexpected equipment failures, optimizes maintenance scheduling, reduces downtime costs",
-        "predictions": results
+        "predictions": results,
+        "diagnostics": {
+            "total_data_points": total_points,
+            "successful_predictions": len(results),
+            "errors": error_count,
+            "skipped": skipped_count,
+            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
+        }
     }
 
 
@@ -142,15 +160,25 @@ async def get_overload_risk_classification(
     data_points.reverse()
 
     results = []
+    total_points = len(data_points)
+    skipped_count = 0
+    error_count = 0
+
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
 
-        # Skip if ML inference failed
-        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+        # Track errors
+        if 'error' in predictions:
+            error_count += 1
+            continue
+
+        if not predictions.get('predictive_maintenance'):
+            skipped_count += 1
             continue
 
         overload = predictions['predictive_maintenance'].get('overload_risk_classification')
         if not overload:
+            skipped_count += 1
             continue
 
         results.append({
@@ -165,7 +193,14 @@ async def get_overload_risk_classification(
         "algorithm": "SVM (Support Vector Machine)",
         "training_dataset": "500 samples with varying load levels from 50% to 200% of rated capacity",
         "benefits": "Prevents equipment overheating and damage, enables proactive load shedding decisions",
-        "predictions": results
+        "predictions": results,
+        "diagnostics": {
+            "total_data_points": total_points,
+            "successful_predictions": len(results),
+            "errors": error_count,
+            "skipped": skipped_count,
+            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
+        }
     }
 
 
@@ -201,15 +236,25 @@ async def get_power_quality_index(
     data_points.reverse()
 
     results = []
+    total_points = len(data_points)
+    skipped_count = 0
+    error_count = 0
+
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
 
-        # Skip if ML inference failed
-        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+        # Track errors
+        if 'error' in predictions:
+            error_count += 1
+            continue
+
+        if not predictions.get('predictive_maintenance'):
+            skipped_count += 1
             continue
 
         pqi = predictions['predictive_maintenance'].get('power_quality_index')
         if not pqi:
+            skipped_count += 1
             continue
 
         results.append({
@@ -226,7 +271,14 @@ async def get_power_quality_index(
         "algorithm": "Neural Network (Multi-layer Perceptron)",
         "training_dataset": "Comprehensive dataset combining voltage quality (40%), frequency quality (30%), and power factor quality (30%) metrics",
         "benefits": "Provides single metric for overall power quality, helps prioritize improvement investments",
-        "predictions": results
+        "predictions": results,
+        "diagnostics": {
+            "total_data_points": total_points,
+            "successful_predictions": len(results),
+            "errors": error_count,
+            "skipped": skipped_count,
+            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
+        }
     }
 
 
@@ -262,15 +314,25 @@ async def get_voltage_sag_prediction(
     data_points.reverse()
 
     results = []
+    total_points = len(data_points)
+    skipped_count = 0
+    error_count = 0
+
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
 
-        # Skip if ML inference failed
-        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+        # Track errors
+        if 'error' in predictions:
+            error_count += 1
+            continue
+
+        if not predictions.get('predictive_maintenance'):
+            skipped_count += 1
             continue
 
         sag = predictions['predictive_maintenance'].get('voltage_sag_prediction')
         if not sag:
+            skipped_count += 1
             continue
 
         results.append({
@@ -285,5 +347,12 @@ async def get_voltage_sag_prediction(
         "algorithm": "Random Forest Classifier",
         "training_dataset": "Data including normal conditions and voltage sag events (< 0.9 pu voltage)",
         "benefits": "Enables installation of protective devices before sags occur, protects sensitive equipment",
-        "predictions": results
+        "predictions": results,
+        "diagnostics": {
+            "total_data_points": total_points,
+            "successful_predictions": len(results),
+            "errors": error_count,
+            "skipped": skipped_count,
+            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
+        }
     }

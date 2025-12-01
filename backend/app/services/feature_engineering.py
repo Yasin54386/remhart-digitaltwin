@@ -261,6 +261,8 @@ class FeatureEngineer:
 
         return {
             'v_thd_estimated': v_thd_est,
+            'v_variance': v_features.get('v_variance', 0),  # Add for harmonic analyzer
+            'power_factor': p_features.get('power_factor', 0.9),  # Add for harmonic analyzer
             'v_quality_score': v_quality,
             'f_quality_score': f_quality,
             'pf_quality_score': pf_quality,

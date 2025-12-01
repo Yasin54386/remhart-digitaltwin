@@ -6,11 +6,16 @@
 {% block extra_css %}
 <style>
     .ml-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        padding: 20px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        padding: 25px;
         margin-bottom: 25px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        min-height: 550px;
     }
 
     .ml-card-header {
@@ -20,13 +25,21 @@
         margin-bottom: 15px;
         border-bottom: 2px solid #3498db;
         padding-bottom: 10px;
+        flex-shrink: 0;
     }
 
     .ml-card-title {
         font-size: 18px;
         font-weight: bold;
-        color: #2c3e50;
+        color: white;
         flex-grow: 1;
+    }
+
+    .ml-card-status {
+        flex-shrink: 0;
+        min-height: 80px;
+        margin-bottom: 15px;
+        color: white;
     }
 
     .info-btn {
@@ -49,15 +62,34 @@
     .chart-container {
         position: relative;
         height: 300px;
-        margin-top: 15px;
+        margin-top: auto;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        flex-shrink: 0;
     }
 
     .metric-box {
-        background: #e3f2fd;
-        padding: 10px;
-        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        padding: 12px 15px;
+        border-radius: 8px;
         margin-top: 10px;
         font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    .metric-box strong {
+        color: #1a8c99;
+    }
+
+    .page-header {
+        color: white;
+    }
+
+    .page-header p {
+        color: rgba(255, 255, 255, 0.85);
     }
 
     .risk-badge {
@@ -191,11 +223,11 @@
 
 {% block content %}
 <div class="container">
-    <div style="margin-bottom: 30px;">
+    <div class="page-header" style="margin-bottom: 30px;">
         <h2 style="margin-bottom: 10px;">
             <i class="fas fa-brain"></i> Real-time Monitoring - AI/ML Powered
         </h2>
-        <p style="color: #666;">Advanced real-time analytics using 4 AI/ML models. Automatically displays latest 200 data points.</p>
+        <p>Advanced real-time analytics using 4 AI/ML models. Automatically displays latest 200 data points.</p>
     </div>
 
     <!-- Row 1: Voltage Anomaly Detection + Harmonic Analysis -->
@@ -209,7 +241,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Status:</span>
                 <span id="voltageStatus" class="risk-badge risk-low">Normal</span>
                 <div class="metric-box">
@@ -231,7 +263,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>THD Level:</span>
                 <span id="thdLevel" class="risk-badge risk-low">Low</span>
                 <div class="metric-box">
@@ -256,7 +288,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Stability Score:</span>
                 <span id="stabilityScore">100</span>
                 <span style="margin-left: 15px;">Trend:</span>
@@ -276,7 +308,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Severity:</span>
                 <span id="imbalanceSeverity" class="risk-badge risk-low">Normal</span>
                 <div class="metric-box">

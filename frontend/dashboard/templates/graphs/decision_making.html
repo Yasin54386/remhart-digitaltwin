@@ -6,11 +6,16 @@
 {% block extra_css %}
 <style>
     .ml-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        padding: 20px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        padding: 25px;
         margin-bottom: 25px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        min-height: 550px;
     }
 
     .ml-card-header {
@@ -20,13 +25,27 @@
         margin-bottom: 15px;
         border-bottom: 2px solid #9b59b6;
         padding-bottom: 10px;
+        flex-shrink: 0;
     }
 
     .ml-card-title {
         font-size: 18px;
         font-weight: bold;
-        color: #2c3e50;
+        color: white;
         flex-grow: 1;
+    }
+
+    .ml-card-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .ml-card-status {
+        flex-shrink: 0;
+        min-height: 80px;
+        margin-bottom: 15px;
+        color: white;
     }
 
     .info-btn {
@@ -49,15 +68,26 @@
     .chart-container {
         position: relative;
         height: 300px;
-        margin-top: 15px;
+        margin-top: auto;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        flex-shrink: 0;
     }
 
     .metric-box {
-        background: #f4ecf7;
-        padding: 10px;
-        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        padding: 12px 15px;
+        border-radius: 8px;
         margin-top: 10px;
         font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    .metric-box strong {
+        color: #1a8c99;
     }
 
     .status-badge {
@@ -188,25 +218,41 @@
     }
 
     .recommendation-list {
-        background: #fef5e7;
-        padding: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        padding: 12px 15px;
         border-left: 3px solid #f39c12;
         margin-top: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    .recommendation-list strong {
+        color: #1a8c99;
     }
 
     .recommendation-list li {
         margin-bottom: 5px;
+        color: #333;
+    }
+
+    .page-header {
+        color: white;
+    }
+
+    .page-header p {
+        color: rgba(255, 255, 255, 0.85);
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <div style="margin-bottom: 30px;">
+    <div class="page-header" style="margin-bottom: 30px;">
         <h2 style="margin-bottom: 10px;">
             <i class="fas fa-brain"></i> Decision Making - AI/ML Powered
         </h2>
-        <p style="color: #666;">Intelligent decision support using 4 AI/ML models. Automatically displays latest 200 data points.</p>
+        <p>Intelligent decision support using 4 AI/ML models. Automatically displays latest 200 data points.</p>
     </div>
 
     <!-- Row 1: Reactive Power Compensation + Load Balancing -->
@@ -220,7 +266,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Power Factor:</span>
                 <span id="currentPF" class="status-badge status-good">0.90</span>
                 <div class="metric-box">
@@ -242,7 +288,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Imbalance:</span>
                 <span id="imbalanceStatus" class="status-badge status-optimal">Low</span>
                 <div class="metric-box">
@@ -267,15 +313,15 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Status:</span>
                 <span id="stabilityStatus" class="status-badge status-optimal">Stable</span>
                 <span style="margin-left: 15px;">Score:</span>
                 <span id="stabilityScore">100</span>
-            </div>
-            <div class="recommendation-list" id="recommendations" style="display:none;">
-                <strong>Recommendations:</strong>
-                <ul id="recList"></ul>
+                <div class="recommendation-list" id="recommendations" style="display:none;">
+                    <strong>Recommendations:</strong>
+                    <ul id="recList"></ul>
+                </div>
             </div>
             <div class="chart-container">
                 <canvas id="stabilityChart"></canvas>
@@ -291,7 +337,7 @@
                     Info
                 </button>
             </div>
-            <div>
+            <div class="ml-card-status">
                 <span>Reserve Margin:</span>
                 <span id="reserveStatus" class="status-badge status-optimal">Adequate</span>
                 <div class="metric-box">

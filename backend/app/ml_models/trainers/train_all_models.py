@@ -81,8 +81,54 @@ class ModelTrainer:
 
         # Frequency features
         self.df['f_deviation'] = abs(self.df['freq'] - 50.0)
+        self.df['f_value'] = self.df['freq']  # Alias for consistency
 
-        print("Features engineered successfully")
+        # ============ ADD ALL MISSING FEATURES FOR MODEL TRAINING ============
+
+        # Percentage versions of imbalance features
+        self.df['v_imbalance_pct'] = self.df['v_imbalance']  # Already percentage
+        self.df['i_imbalance_pct'] = self.df['i_imbalance']  # Already percentage
+        self.df['v_deviation_pct'] = self.df['v_deviation']  # Already percentage
+
+        # Rate of change features (rolling window)
+        self.df['v_rate_of_change'] = self.df['v_avg'].diff().fillna(0)
+
+        # Spike detection (simple threshold-based)
+        i_mean = self.df['i_avg'].mean()
+        i_std = self.df['i_avg'].std()
+        self.df['i_spike_detected'] = (self.df['i_avg'] > i_mean + 2 * i_std).astype(int)
+
+        # Voltage statistics (rolling window std)
+        self.df['voltage_avg_std'] = self.df['v_avg'].rolling(window=10, min_periods=1).std().fillna(0)
+        self.df['voltage_avg_trend'] = self.df['v_avg'].rolling(window=10, min_periods=1).mean().diff().fillna(0)
+
+        # Active power statistics
+        self.df['active_power_mean'] = self.df['p_total'].rolling(window=10, min_periods=1).mean().fillna(self.df['p_total'])
+        self.df['active_power_std'] = self.df['p_total'].rolling(window=10, min_periods=1).std().fillna(0)
+        self.df['active_power_trend'] = self.df['p_total'].rolling(window=10, min_periods=1).mean().diff().fillna(0)
+
+        # THD estimation (based on voltage variance as proxy)
+        self.df['v_thd_estimated'] = self.df['v_variance'] / 10  # Simplified THD proxy
+
+        # Quality scores (0-100 scale)
+        self.df['v_quality_score'] = 100 - self.df['v_deviation'].clip(0, 100)
+        self.df['f_quality_score'] = 100 - (self.df['f_deviation'] * 100).clip(0, 100)
+        self.df['pf_quality_score'] = self.df['power_factor'] * 100
+
+        # Overall balance score
+        self.df['overall_balance_score'] = 100 - ((self.df['v_imbalance'] + self.df['i_imbalance'] + self.df['p_imbalance']) / 3).clip(0, 100)
+
+        # Power quality index (composite score)
+        self.df['power_quality_index'] = (
+            self.df['v_quality_score'] * 0.4 +
+            self.df['f_quality_score'] * 0.3 +
+            self.df['pf_quality_score'] * 0.3
+        )
+
+        # Maximum phase current
+        self.df['i_max_phase'] = self.df[['i_a', 'i_b', 'i_c']].max(axis=1)
+
+        print("Features engineered successfully (including all new ML features)")
 
     def _calc_imbalance(self, a, b, c):
         """Calculate 3-phase imbalance percentage"""

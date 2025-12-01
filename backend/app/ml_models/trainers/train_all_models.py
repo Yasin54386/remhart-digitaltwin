@@ -126,7 +126,8 @@ class ModelTrainer:
             labels=['Low', 'Medium', 'High']
         )
 
-        features = ['v_variance', 'v_avg', 'power_factor', 'v_deviation']
+        # Features MUST match model_manager.py analyze_harmonics() exactly!
+        features = ['v_thd_estimated', 'v_variance', 'power_factor', 'v_quality_score']
         X = self.df[features].fillna(0)
         y = self.df['thd_level'].fillna('Low')
 
@@ -197,7 +198,8 @@ class ModelTrainer:
 
         self.df['imbalance_severity'] = self.df.apply(get_severity, axis=1)
 
-        features = ['v_imbalance', 'i_imbalance', 'p_imbalance']
+        # Features MUST match model_manager.py classify_phase_imbalance() exactly!
+        features = ['v_imbalance', 'i_imbalance', 'p_imbalance', 'overall_balance_score']
         X = self.df[features].fillna(0)
         y = self.df['imbalance_severity']
 
@@ -264,7 +266,8 @@ class ModelTrainer:
 
         self.df['overload_risk'] = self.df['i_avg'].apply(get_overload_risk)
 
-        features = ['i_avg', 'p_total', 'i_imbalance']
+        # Features MUST match model_manager.py classify_overload_risk() exactly!
+        features = ['i_avg', 'p_total', 'i_max_phase', 'i_imbalance_pct']
         X = self.df[features].fillna(0)
         y = self.df['overload_risk']
 
@@ -298,7 +301,8 @@ class ModelTrainer:
 
         self.df['pqi'] = self.df.apply(calc_pqi, axis=1)
 
-        features = ['v_deviation', 'f_deviation', 'power_factor', 'v_variance', 'i_imbalance']
+        # Features MUST match model_manager.py calculate_power_quality_index() exactly!
+        features = ['v_quality_score', 'f_quality_score', 'pf_quality_score', 'v_thd_estimated', 'overall_balance_score']
         X = self.df[features].fillna(0).values
         y = self.df['pqi'].values
 
@@ -327,7 +331,8 @@ class ModelTrainer:
 
         self.df['pqi'] = self.df.apply(calc_pqi, axis=1)
 
-        features = ['v_deviation', 'f_deviation', 'power_factor', 'v_variance', 'i_imbalance']
+        # Features MUST match model_manager.py calculate_power_quality_index() exactly!
+        features = ['v_quality_score', 'f_quality_score', 'pf_quality_score', 'v_thd_estimated', 'overall_balance_score']
         X = self.df[features].fillna(0)
         y = self.df['pqi']
 
@@ -343,7 +348,8 @@ class ModelTrainer:
         # Create sag labels
         self.df['voltage_sag'] = (self.df['v_avg'] < 207).astype(int)  # < 0.9 pu
 
-        features = ['v_avg', 'v_variance', 'v_deviation']
+        # Features MUST match model_manager.py predict_voltage_sag() exactly!
+        features = ['v_avg', 'voltage_avg_std', 'v_rate_of_change', 'voltage_avg_trend']
         X = self.df[features].fillna(0)
         y = self.df['voltage_sag']
 
@@ -393,7 +399,8 @@ class ModelTrainer:
             self.df['i_imbalance'] * 0.05  # Imbalance losses
         )
 
-        features = ['i_avg', 'p_total', 'i_imbalance', 'power_factor']
+        # Features MUST match model_manager.py estimate_energy_loss() exactly!
+        features = ['i_avg', 'p_total', 'i_imbalance_pct', 'power_factor']
         X = self.df[features].fillna(0)
         y = self.df['estimated_loss']
 
@@ -418,7 +425,8 @@ class ModelTrainer:
         """Train K-Means for demand response clustering"""
         print("\n[12/16] Training Demand Response Model (K-Means)...")
 
-        features = ['p_total', 'i_avg']
+        # Features MUST match model_manager.py assess_demand_response() exactly!
+        features = ['p_total', 'active_power_mean', 'active_power_std']
         X = self.df[features].fillna(0)
 
         model = KMeans(n_clusters=3, random_state=42, n_init=10)
@@ -475,7 +483,8 @@ class ModelTrainer:
 
         self.df['stability_score'] = self.df.apply(calc_stability, axis=1)
 
-        features = ['v_avg', 'freq', 'power_factor', 'v_imbalance', 'i_imbalance']
+        # Features MUST match model_manager.py score_grid_stability() exactly!
+        features = ['v_avg', 'f_value', 'power_factor', 'overall_balance_score', 'power_quality_index']
         X = self.df[features].fillna(0)
         y = self.df['stability_score']
 
@@ -492,7 +501,8 @@ class ModelTrainer:
         # Optimal generation = current load + 15% reserve
         self.df['optimal_generation'] = self.df['p_total'] * 1.15
 
-        features = ['p_total', 'i_avg']
+        # Features MUST match model_manager.py advise_optimal_dispatch() exactly!
+        features = ['p_total', 'active_power_mean', 'active_power_trend']
         X = self.df[features].fillna(0)
         y = self.df['optimal_generation']
 

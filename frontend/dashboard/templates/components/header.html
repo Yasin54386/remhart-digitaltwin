@@ -1,5 +1,21 @@
+{% load static %}
 <div class="header">
-    <h1>{% block page_title %}REMHART Digital Twin{% endblock %}</h1>
+    <div class="header-left">
+        <!-- CDU Logo -->
+        <div class="logo-container">
+            <img src="{% static 'images/cdu-logo.png' %}" alt="CDU Logo" class="logo-img">
+        </div>
+
+        <!-- ERI Logo with Text -->
+        <div class="eri-logo-section">
+            <img src="{% static 'images/eri-logo.png' %}" alt="ERI Logo" class="logo-img">
+            <div class="eri-text">
+                <span class="title">ERI</span>
+                <span class="subtitle">Energy and Resources Institute</span>
+            </div>
+        </div>
+    </div>
+
     <div class="user-info">
         <span>Welcome, {{ user.username }}</span>
         <a href="{% url 'dashboard:logout' %}" class="logout-btn">Logout</a>

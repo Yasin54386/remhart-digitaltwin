@@ -110,6 +110,17 @@
         <canvas id="currentChart"></canvas>
     </div>
 </div>
+
+<div class="chart-grid">
+    <div class="chart-card">
+        <h2>Active Power Trend</h2>
+        <canvas id="activePowerChart"></canvas>
+    </div>
+    <div class="chart-card">
+        <h2>Reactive Power Trend</h2>
+        <canvas id="reactivePowerChart"></canvas>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -148,15 +159,57 @@
                 tension: 0.4
             }]
         },
-        options: { 
-            responsive: true, 
+        options: {
+            responsive: true,
             maintainAspectRatio: true,
             plugins: {
                 legend: { display: true }
             }
         }
     });
-    
+
+    const activePowerChart = new Chart(document.getElementById('activePowerChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Active Power (W)',
+                data: [],
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: true }
+            }
+        }
+    });
+
+    const reactivePowerChart = new Chart(document.getElementById('reactivePowerChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Reactive Power (VAR)',
+                data: [],
+                borderColor: '#9b59b6',
+                backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: true }
+            }
+        }
+    });
+
     // Fetch initial data via HTTP
     async function loadInitialData() {
         try {
@@ -181,17 +234,23 @@
             const data = await response.json();
 
             console.log(`Loaded ${data.length} ${isSimulatorMode ? 'simulation' : 'real-time'} data points from backend`);
-            
+
             // Clear charts
             voltageChart.data.labels = [];
             voltageChart.data.datasets[0].data = [];
             currentChart.data.labels = [];
             currentChart.data.datasets[0].data = [];
-            
+            activePowerChart.data.labels = [];
+            activePowerChart.data.datasets[0].data = [];
+            reactivePowerChart.data.labels = [];
+            reactivePowerChart.data.datasets[0].data = [];
+
             data.forEach(item => {
                 const time = new Date(item.timestamp).toLocaleTimeString();
                 addDataPoint(voltageChart, time, item.voltage.average);
                 addDataPoint(currentChart, time, item.current.average);
+                addDataPoint(activePowerChart, time, item.active_power.total);
+                addDataPoint(reactivePowerChart, time, item.reactive_power.total);
             });
             
             if (data.length > 0) {
@@ -225,11 +284,13 @@
             const filteredData = isSimulatorMode
                 ? message.data.filter(item => item.is_simulation && item.simulation_id === activeSimulationId)
                 : message.data.filter(item => !item.is_simulation);
-            
+
             filteredData.forEach(item => {
                 const time = new Date(item.timestamp).toLocaleTimeString();
                 addDataPoint(voltageChart, time, item.voltage.average);
                 addDataPoint(currentChart, time, item.current.average);
+                addDataPoint(activePowerChart, time, item.active_power.total);
+                addDataPoint(reactivePowerChart, time, item.reactive_power.total);
             });
             
             if (filteredData.length > 0) {
@@ -249,6 +310,8 @@
                 const time = new Date(data.timestamp).toLocaleTimeString();
                 addDataPoint(voltageChart, time, data.voltage.average);
                 addDataPoint(currentChart, time, data.current.average);
+                addDataPoint(activePowerChart, time, data.active_power.total);
+                addDataPoint(reactivePowerChart, time, data.reactive_power.total);
                 updateStats(data);
             }
         }

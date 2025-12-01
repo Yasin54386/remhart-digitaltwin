@@ -85,7 +85,14 @@ async def get_equipment_failure_prediction(
     results = []
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
-        failure = predictions['predictive_maintenance']['equipment_failure_prediction']
+
+        # Skip if ML inference failed
+        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+            continue
+
+        failure = predictions['predictive_maintenance'].get('equipment_failure_prediction')
+        if not failure:
+            continue
 
         results.append({
             'timestamp': point.timestamp,

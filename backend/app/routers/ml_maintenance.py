@@ -144,7 +144,14 @@ async def get_overload_risk_classification(
     results = []
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
-        overload = predictions['predictive_maintenance']['overload_risk_classification']
+
+        # Skip if ML inference failed
+        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+            continue
+
+        overload = predictions['predictive_maintenance'].get('overload_risk_classification')
+        if not overload:
+            continue
 
         results.append({
             'timestamp': point.timestamp,
@@ -196,7 +203,14 @@ async def get_power_quality_index(
     results = []
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
-        pqi = predictions['predictive_maintenance']['power_quality_index']
+
+        # Skip if ML inference failed
+        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+            continue
+
+        pqi = predictions['predictive_maintenance'].get('power_quality_index')
+        if not pqi:
+            continue
 
         results.append({
             'timestamp': point.timestamp,
@@ -250,7 +264,14 @@ async def get_voltage_sag_prediction(
     results = []
     for point in data_points:
         predictions = ml_inference_engine.process_data_point(point)
-        sag = predictions['predictive_maintenance']['voltage_sag_prediction']
+
+        # Skip if ML inference failed
+        if 'error' in predictions or not predictions.get('predictive_maintenance'):
+            continue
+
+        sag = predictions['predictive_maintenance'].get('voltage_sag_prediction')
+        if not sag:
+            continue
 
         results.append({
             'timestamp': point.timestamp,

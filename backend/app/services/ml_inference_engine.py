@@ -58,7 +58,9 @@ class MLInferenceEngine:
             return predictions
 
         except Exception as e:
-            logger.error(f"Error processing data point: {e}")
+            import traceback
+            error_trace = traceback.format_exc()
+            logger.error(f"Error processing data point: {e}\n{error_trace}")
             return self._get_error_response(str(e))
 
     def _flatten_features(self, features: Dict) -> Dict:

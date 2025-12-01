@@ -609,24 +609,28 @@
             });
             const forecastData = await forecastResp.json();
 
-            if (forecastData.historical && forecastData.historical.length > 0) {
-                const limited = forecastData.historical.slice(-200);
-                const histLabels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
-                const histData = limited.map(p => p.load_kw);
+            if (forecastData.data && forecastData.data.length > 0) {
+                const limited = forecastData.data.slice(-200);
+                const latest = limited[limited.length - 1];
 
-                const forecastLabels = forecastData.forecast.hourly_forecast.map((_, i) => `+${i+1}h`);
+                // Historical load data (current_load_kw from each point)
+                const histLabels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
+                const histData = limited.map(p => p.current_load_kw);
+
+                // Forecast from latest point
+                const forecastLabels = latest.hourly_forecast.map((_, i) => `+${i+1}h`);
                 const allLabels = [...histLabels, ...forecastLabels];
 
                 forecastChart.data.labels = allLabels;
                 forecastChart.data.datasets[0].data = [...histData, ...Array(forecastLabels.length).fill(null)];
-                forecastChart.data.datasets[1].data = [...Array(histLabels.length).fill(null), ...forecastData.forecast.hourly_forecast];
+                forecastChart.data.datasets[1].data = [...Array(histLabels.length).fill(null), ...latest.hourly_forecast];
                 forecastChart.update();
 
-                document.getElementById('currentLoad').textContent = forecastData.forecast.current_load_kw.toFixed(1) + ' kW';
-                document.getElementById('peakTime').textContent = 'Hour ' + forecastData.forecast.peak_load_time;
+                document.getElementById('currentLoad').textContent = latest.current_load_kw.toFixed(1) + ' kW';
+                document.getElementById('peakTime').textContent = 'Hour ' + latest.peak_load_time;
 
                 const trendEl = document.getElementById('forecastTrend');
-                const trend = forecastData.forecast.trend.toLowerCase();
+                const trend = latest.trend.toLowerCase();
                 if (trend.includes('increasing')) {
                     trendEl.className = 'risk-badge risk-high';
                     trendEl.textContent = 'Increasing';
@@ -676,24 +680,26 @@
             });
             const flowData = await flowResp.json();
 
-            if (flowData.current_state && flowData.optimization) {
+            if (flowData.data && flowData.data.length > 0) {
+                const latest = flowData.data[flowData.data.length - 1];
+
                 flowChart.data.datasets[0].data = [
-                    flowData.current_state.phase_distribution.phase_a,
-                    flowData.current_state.phase_distribution.phase_b,
-                    flowData.current_state.phase_distribution.phase_c
+                    latest.current_distribution.phase_a,
+                    latest.current_distribution.phase_b,
+                    latest.current_distribution.phase_c
                 ];
                 flowChart.data.datasets[1].data = [
-                    flowData.optimization.optimized_distribution.phase_a,
-                    flowData.optimization.optimized_distribution.phase_b,
-                    flowData.optimization.optimized_distribution.phase_c
+                    latest.optimal_distribution.phase_a,
+                    latest.optimal_distribution.phase_b,
+                    latest.optimal_distribution.phase_c
                 ];
                 flowChart.update();
 
-                document.getElementById('rebalanceNeeded').textContent = flowData.optimization.rebalancing_needed ? 'Yes' : 'No';
-                document.getElementById('savings').textContent = flowData.optimization.potential_savings_pct.toFixed(1) + '%';
+                document.getElementById('rebalanceNeeded').textContent = latest.rebalancing_needed ? 'Yes' : 'No';
+                document.getElementById('savings').textContent = latest.potential_savings_pct.toFixed(1) + '%';
 
                 const statusEl = document.getElementById('flowStatus');
-                if (flowData.optimization.rebalancing_needed) {
+                if (latest.rebalancing_needed) {
                     statusEl.className = 'risk-badge risk-high';
                     statusEl.textContent = 'Needs Optimization';
                 } else {

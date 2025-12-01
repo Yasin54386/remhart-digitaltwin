@@ -273,7 +273,7 @@ class FeatureEngineer:
         """Extract time-series statistical features"""
         features = {}
 
-        for param in ['voltage_avg', 'current_avg', 'frequency', 'power_factor']:
+        for param in ['voltage_avg', 'current_avg', 'frequency', 'active_power', 'reactive_power', 'power_factor']:
             if len(self.history[param]) >= 10:
                 values = list(self.history[param])
                 features[f'{param}_mean'] = np.mean(values)
@@ -282,6 +282,7 @@ class FeatureEngineer:
                 features[f'{param}_max'] = np.max(values)
                 features[f'{param}_trend'] = self._calculate_trend(values)
             else:
+                # Provide defaults when not enough history
                 features[f'{param}_mean'] = 0
                 features[f'{param}_std'] = 0
                 features[f'{param}_min'] = 0

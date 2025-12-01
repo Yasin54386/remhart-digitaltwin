@@ -714,6 +714,89 @@
         }
     }
 
+    // WebSocket connection for real-time ML predictions
+    let mlWebSocket = null;
+    let reconnectTimeout = null;
+
+    function connectMLWebSocket() {
+        if (mlWebSocket && (mlWebSocket.readyState === WebSocket.OPEN || mlWebSocket.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/ml-predictions?is_simulation=${isSimulation}`;
+
+        console.log('Connecting to ML WebSocket:', wsUrl);
+        mlWebSocket = new WebSocket(wsUrl);
+
+        mlWebSocket.onopen = () => {
+            console.log('ML WebSocket connected - Real-time predictions active');
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+        };
+
+        mlWebSocket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+
+                if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
+                    updateMLCharts(message.data);
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        };
+
+        mlWebSocket.onerror = (error) => {
+            console.error('ML WebSocket error:', error);
+        };
+
+        mlWebSocket.onclose = () => {
+            console.log('ML WebSocket disconnected - Will reconnect in 5s');
+            mlWebSocket = null;
+            reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
+        };
+    }
+
+    function updateMLCharts(predictions) {
+        if (!predictions || !predictions.decision_making) {
+            console.warn('No decision making data in WebSocket message');
+            return;
+        }
+
+        const decision = predictions.decision_making;
+
+        // Reactive Power Compensation
+        if (decision.reactive_power_compensation) {
+            const comp = decision.reactive_power_compensation;
+            document.getElementById('currentPF').textContent = comp.current_pf.toFixed(3);
+            document.getElementById('targetPF').textContent = comp.target_pf.toFixed(2);
+            document.getElementById('reqCompensation').textContent = comp.required_compensation_kvar.toFixed(1) + ' kVAR';
+        }
+
+        // Load Balancing Optimization
+        if (decision.load_balancing_optimization) {
+            const bal = decision.load_balancing_optimization;
+            document.getElementById('currentImbalance').textContent = bal.current_imbalance_pct.toFixed(1) + '%';
+            document.getElementById('expectedImprovement').textContent = bal.expected_improvement_pct.toFixed(1) + '%';
+        }
+
+        // Grid Stability Scoring
+        if (decision.grid_stability_scoring) {
+            const stab = decision.grid_stability_scoring;
+            document.getElementById('stabilityScore').textContent = (stab.stability_score * 100).toFixed(1);
+        }
+
+        // Optimal Dispatch Advisory
+        if (decision.optimal_dispatch_advisory) {
+            const dispatch = decision.optimal_dispatch_advisory;
+            document.getElementById('dispatchLoad').textContent = dispatch.current_load_kw.toFixed(1) + ' kW';
+            document.getElementById('recGen').textContent = dispatch.recommended_generation_kw.toFixed(1) + ' kW';
+        }
+    }
+
     // Check simulator mode from global variable
     function updateSimulatorMode() {
         isSimulation = isSimulatorMode;
@@ -731,8 +814,7 @@
         updateSimulatorMode();
         updateVisualizations();
 
-        // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 30000); // TODO: Replace with WebSocket for real-time updates
+        // Real-time updates via WebSocket (no polling needed) // TODO: Replace with WebSocket for real-time updates
     });
 </script>
 {% endblock %}

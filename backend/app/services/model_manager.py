@@ -507,7 +507,7 @@ class ModelManager:
             features['p_total']
         ]])
 
-        optimal_q = model.predict(X)[0][0]
+        optimal_q = float(model.predict(X)[0])
 
         return {
             'current_pf': features['power_factor'],

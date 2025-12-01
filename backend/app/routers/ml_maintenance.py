@@ -263,7 +263,7 @@ async def get_power_quality_index(
             'quality_grade': pqi['grade'],
             'voltage_quality': pqi['voltage_quality'],
             'frequency_quality': pqi['frequency_quality'],
-            'power_factor_quality': pqi['pf_quality_score'],
+            'power_factor_quality': pqi['power_factor_quality'],
             'improvement_areas': pqi['improvement_areas']
         })
 

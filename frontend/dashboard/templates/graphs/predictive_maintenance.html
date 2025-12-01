@@ -565,140 +565,176 @@
         });
     }
 
-    // Fetch and update all visualizations
-    async function updateVisualizations() {
-        console.log('=== Update Visualizations Started ===');
-        console.log('API_URL:', API_URL);
-        console.log('Token:', token ? 'Present' : 'Missing');
-        console.log('isSimulation:', isSimulation);
+    // WebSocket connection for real-time ML predictions
+    let mlWebSocket = null;
+    let reconnectTimeout = null;
+
+    function connectMLWebSocket() {
+        if (mlWebSocket && (mlWebSocket.readyState === WebSocket.OPEN || mlWebSocket.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/ml-predictions?is_simulation=${isSimulation}`;
+
+        console.log('Connecting to ML WebSocket:', wsUrl);
+        mlWebSocket = new WebSocket(wsUrl);
+
+        mlWebSocket.onopen = () => {
+            console.log('ML WebSocket connected - Real-time predictions active');
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+        };
+
+        mlWebSocket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+
+                if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
+                    updatePredictiveMaintenanceCharts(message.data);
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        };
+
+        mlWebSocket.onerror = (error) => {
+            console.error('ML WebSocket error:', error);
+        };
+
+        mlWebSocket.onclose = () => {
+            console.log('ML WebSocket disconnected - Will reconnect in 5s');
+            mlWebSocket = null;
+            reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
+        };
+    }
+
+    function updatePredictiveMaintenanceCharts(predictions) {
+        if (!predictions || !predictions.predictive_maintenance) {
+            console.warn('No predictive maintenance data in WebSocket message');
+            return;
+        }
+
+        const maintenance = predictions.predictive_maintenance;
+
+        // Equipment Failure
+        if (maintenance.equipment_failure_prediction) {
+            const failure = maintenance.equipment_failure_prediction;
+            document.getElementById('failureProb').textContent = failure.failure_probability.toFixed(1) + '%';
+            document.getElementById('ttf').textContent = Math.round(failure.estimated_days_to_failure) + ' days';
+
+            const riskEl = document.getElementById('failureRisk');
+            if (failure.failure_probability > 50) {
+                riskEl.className = 'risk-badge risk-high';
+                riskEl.textContent = 'High';
+            } else if (failure.failure_probability > 20) {
+                riskEl.className = 'risk-badge risk-medium';
+                riskEl.textContent = 'Medium';
+            } else {
+                riskEl.className = 'risk-badge risk-low';
+                riskEl.textContent = 'Low';
+            }
+        }
+
+        // Overload Risk
+        if (maintenance.overload_risk_classification) {
+            const overload = maintenance.overload_risk_classification;
+            document.getElementById('loadPct').textContent = overload.current_load_pct.toFixed(1) + '%';
+            document.getElementById('peakPhase').textContent = overload.peak_phase;
+
+            const riskEl = document.getElementById('overloadRisk');
+            if (overload.risk_level.toLowerCase() === 'high') {
+                riskEl.className = 'risk-badge risk-high';
+                riskEl.textContent = 'High';
+            } else if (overload.risk_level.toLowerCase() === 'medium') {
+                riskEl.className = 'risk-badge risk-medium';
+                riskEl.textContent = 'Medium';
+            } else {
+                riskEl.className = 'risk-badge risk-low';
+                riskEl.textContent = 'Low';
+            }
+        }
+
+        // Power Quality Index
+        if (maintenance.power_quality_index) {
+            const pqi = maintenance.power_quality_index;
+            document.getElementById('pqiScore').textContent = pqi.pqi_score.toFixed(1);
+            document.getElementById('pqiGrade').textContent = pqi.grade;
+        }
+
+        // Voltage Sag
+        if (maintenance.voltage_sag_prediction) {
+            const sag = maintenance.voltage_sag_prediction;
+            document.getElementById('sagProb').textContent = sag.sag_probability.toFixed(1) + '%';
+            document.getElementById('sagDuration').textContent = sag.expected_duration_ms + ' ms';
+
+            const riskEl = document.getElementById('sagRisk');
+            if (sag.sag_probability > 30) {
+                riskEl.className = 'risk-badge risk-high';
+                riskEl.textContent = 'High';
+            } else if (sag.sag_probability > 10) {
+                riskEl.className = 'risk-badge risk-medium';
+                riskEl.textContent = 'Medium';
+            } else {
+                riskEl.className = 'risk-badge risk-low';
+                riskEl.textContent = 'Low';
+            }
+        }
+    }
+
+    // Fallback: Initial load using REST API (for historical chart data)
+    async function loadInitialChartData() {
+        const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
 
         try {
-            const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
-            console.log('Query params:', params);
+            // Load historical data for charts (need time-series for charts)
+            const [failureResp, overloadResp, pqiResp, sagResp] = await Promise.all([
+                fetch(`${API_URL}/api/ml/maintenance/equipment-failure${params}`, { headers: { 'Authorization': `Bearer ${token}` }}),
+                fetch(`${API_URL}/api/ml/maintenance/overload-risk${params}`, { headers: { 'Authorization': `Bearer ${token}` }}),
+                fetch(`${API_URL}/api/ml/maintenance/power-quality-index${params}`, { headers: { 'Authorization': `Bearer ${token}` }}),
+                fetch(`${API_URL}/api/ml/maintenance/voltage-sag${params}`, { headers: { 'Authorization': `Bearer ${token}` }})
+            ]);
 
-            // Equipment Failure
-            const failureUrl = `${API_URL}/api/ml/maintenance/equipment-failure${params}`;
-            console.log('Fetching Equipment Failure from:', failureUrl);
+            const [failureData, overloadData, pqiData, sagData] = await Promise.all([
+                failureResp.json(),
+                overloadResp.json(),
+                pqiResp.json(),
+                sagResp.json()
+            ]);
 
-            const failureResp = await fetch(failureUrl, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            console.log('Equipment Failure Response Status:', failureResp.status);
-
-            const failureData = await failureResp.json();
-            console.log('Equipment Failure Data:', failureData);
-
+            // Update charts with historical data
             if (failureData.predictions && failureData.predictions.length > 0) {
-                console.log('Processing', failureData.predictions.length, 'predictions');
                 const limited = failureData.predictions.slice(-200);
-                console.log('Limited to', limited.length, 'predictions');
-
                 failureChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
                 failureChart.data.datasets[0].data = limited.map(p => p.failure_probability);
                 failureChart.update();
-                console.log('Equipment Failure chart updated');
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('failureProb').textContent = latest.failure_probability.toFixed(1) + '%';
-                document.getElementById('ttf').textContent = Math.round(latest.time_to_failure) + ' days';
-
-                const riskEl = document.getElementById('failureRisk');
-                if (latest.failure_probability > 50) {
-                    riskEl.className = 'risk-badge risk-high';
-                    riskEl.textContent = 'High';
-                } else if (latest.failure_probability > 20) {
-                    riskEl.className = 'risk-badge risk-medium';
-                    riskEl.textContent = 'Medium';
-                } else {
-                    riskEl.className = 'risk-badge risk-low';
-                    riskEl.textContent = 'Low';
-                }
-            } else {
-                console.warn('No predictions data received for Equipment Failure');
-                console.log('failureData structure:', Object.keys(failureData));
             }
-
-            // Overload Risk
-            const overloadResp = await fetch(`${API_URL}/api/ml/maintenance/overload-risk${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const overloadData = await overloadResp.json();
 
             if (overloadData.predictions && overloadData.predictions.length > 0) {
                 const limited = overloadData.predictions.slice(-200);
                 overloadChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
                 overloadChart.data.datasets[0].data = limited.map(p => p.load_percentage);
                 overloadChart.update();
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('loadPct').textContent = latest.load_percentage.toFixed(1) + '%';
-                document.getElementById('peakPhase').textContent = latest.peak_phase;
-
-                const riskEl = document.getElementById('overloadRisk');
-                if (latest.risk_level === 'high') {
-                    riskEl.className = 'risk-badge risk-high';
-                    riskEl.textContent = 'High';
-                } else if (latest.risk_level === 'medium') {
-                    riskEl.className = 'risk-badge risk-medium';
-                    riskEl.textContent = 'Medium';
-                } else {
-                    riskEl.className = 'risk-badge risk-low';
-                    riskEl.textContent = 'Low';
-                }
             }
-
-            // Power Quality Index
-            const pqiResp = await fetch(`${API_URL}/api/ml/maintenance/power-quality-index${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const pqiData = await pqiResp.json();
 
             if (pqiData.predictions && pqiData.predictions.length > 0) {
                 const limited = pqiData.predictions.slice(-200);
                 pqiChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
                 pqiChart.data.datasets[0].data = limited.map(p => p.pqi_score);
                 pqiChart.update();
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('pqiScore').textContent = latest.pqi_score.toFixed(1);
-                document.getElementById('pqiGrade').textContent = latest.quality_grade;
             }
-
-            // Voltage Sag
-            const sagResp = await fetch(`${API_URL}/api/ml/maintenance/voltage-sag${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const sagData = await sagResp.json();
 
             if (sagData.predictions && sagData.predictions.length > 0) {
                 const limited = sagData.predictions.slice(-200);
                 sagChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
                 sagChart.data.datasets[0].data = limited.map(p => p.sag_probability);
                 sagChart.update();
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('sagProb').textContent = latest.sag_probability.toFixed(1) + '%';
-                document.getElementById('sagDuration').textContent = latest.expected_duration_ms + ' ms';
-
-                const riskEl = document.getElementById('sagRisk');
-                if (latest.sag_probability > 30) {
-                    riskEl.className = 'risk-badge risk-high';
-                    riskEl.textContent = 'High';
-                } else if (latest.sag_probability > 10) {
-                    riskEl.className = 'risk-badge risk-medium';
-                    riskEl.textContent = 'Medium';
-                } else {
-                    riskEl.className = 'risk-badge risk-low';
-                    riskEl.textContent = 'Low';
-                }
             }
 
         } catch (error) {
-            console.error('=== ERROR FETCHING ML DATA ===');
-            console.error('Error type:', error.name);
-            console.error('Error message:', error.message);
-            console.error('Full error:', error);
-            console.error('Stack trace:', error.stack);
+            console.error('Error loading initial chart data:', error);
         }
     }
 
@@ -710,17 +746,33 @@
     // Listen for simulator mode changes
     document.addEventListener('simulatorModeChanged', (e) => {
         isSimulation = e.detail.isSimulatorMode;
-        updateVisualizations();
+        // Reconnect WebSocket with new simulation mode
+        if (mlWebSocket) {
+            mlWebSocket.close();
+        }
+        connectMLWebSocket();
+        // Reload chart data for new mode
+        loadInitialChartData();
     });
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         initCharts();
         updateSimulatorMode();
-        updateVisualizations();
+        // Load initial historical data for charts
+        loadInitialChartData();
+        // Connect WebSocket for real-time updates
+        connectMLWebSocket();
+    });
 
-        // Auto-refresh every 30 seconds (TODO: Replace with WebSocket for real-time updates)
-        setInterval(updateVisualizations, 30000);
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (mlWebSocket) {
+            mlWebSocket.close();
+        }
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+        }
     });
 </script>
 {% endblock %}

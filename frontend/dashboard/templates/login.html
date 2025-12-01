@@ -12,8 +12,51 @@
             background: url('https://images.unsplash.com/photo-1509391366360-2e959784a276?w=1920') center/cover;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+        }
+        .header-logos {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1a8c99 0%, #157a85 100%);
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .logo-img {
+            height: 50px;
+            width: auto;
+            object-fit: contain;
+        }
+        .header-logos > img {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+        .eri-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .eri-text {
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+        .eri-text .title {
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .eri-text .subtitle {
+            font-size: 14px;
+            font-weight: normal;
         }
         .login-container {
             background: rgba(255, 255, 255, 0.95);
@@ -22,18 +65,7 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             width: 100%;
             max-width: 400px;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            background: #27ae60;
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 40px;
+            margin-top: 80px;
         }
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
         .form-group { margin-bottom: 20px; }
@@ -70,9 +102,20 @@
     </style>
 </head>
 <body>
+    <!-- Header with Logos -->
+    <div class="header-logos">
+        <img src="{% static 'images/cdu-logo.png' %}" alt="CDU Logo" class="logo-img">
+        <div class="eri-section">
+            <img src="{% static 'images/eri-logo.png' %}" alt="ERI Logo" class="logo-img">
+            <div class="eri-text">
+                <span class="title">ERI</span>
+                <span class="subtitle">Energy and Resources Institute</span>
+            </div>
+        </div>
+    </div>
+
     <div class="login-container">
-        <div class="logo">🌱</div>
-        <h2>Login to REMHART</h2>
+        <h2>Login to REMHART Digital Twin</h2>
         
         {% if error %}
         <div class="error">{{ error }}</div>

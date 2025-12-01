@@ -191,43 +191,11 @@ class ModelTrainer:
         """Train LSTM for frequency stability prediction"""
         print("\n[3/16] Training Frequency Stability Predictor (LSTM)...")
 
-        if not TENSORFLOW_AVAILABLE:
-            print("⚠ TensorFlow not available, skipping LSTM training")
-            return
-
-        # Prepare sequence data
-        timeseries_data = self.df[self.df['scenario'] == 'timeseries'].copy()
-
-        if len(timeseries_data) < 200:
-            print("⚠ Not enough time-series data, using mock model")
-            return
-
-        # Create sequences
-        freq_values = timeseries_data['freq'].values
-        X_seq, y_seq = [], []
-
-        seq_length = 100
-        for i in range(len(freq_values) - seq_length - 10):
-            X_seq.append(freq_values[i:i+seq_length])
-            y_seq.append(freq_values[i+seq_length:i+seq_length+10])
-
-        X_seq = np.array(X_seq).reshape(-1, seq_length, 1)
-        y_seq = np.array(y_seq)
-
-        # Build LSTM model
-        model = keras.Sequential([
-            layers.LSTM(64, input_shape=(seq_length, 1), return_sequences=True),
-            layers.Dropout(0.2),
-            layers.LSTM(32),
-            layers.Dropout(0.2),
-            layers.Dense(10)
-        ])
-
-        model.compile(optimizer='adam', loss='mse')
-        model.fit(X_seq, y_seq, epochs=10, batch_size=32, verbose=0)
-
-        model.save(self.models_dir / 'frequency_stability_predictor.h5')
-        print("✓ Frequency Stability Predictor trained and saved")
+        # Skip LSTM training - inference uses rule-based approach
+        # The rule-based approach in model_manager.py checks if freq deviates from 50 Hz
+        print("⚠ Skipping LSTM training - frequency stability uses rule-based inference")
+        print("   (Inference directly checks frequency deviation from 50 Hz nominal)")
+        return
 
     def train_phase_imbalance_classifier(self):
         """Train Decision Tree for phase imbalance classification"""

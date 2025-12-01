@@ -702,6 +702,130 @@
         }
     }
 
+    // WebSocket connection for real-time ML predictions
+    let mlWebSocket = null;
+    let reconnectTimeout = null;
+
+    function connectMLWebSocket() {
+        if (mlWebSocket && (mlWebSocket.readyState === WebSocket.OPEN || mlWebSocket.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/ml-predictions?is_simulation=${isSimulation}`;
+
+        console.log('Connecting to ML WebSocket:', wsUrl);
+        mlWebSocket = new WebSocket(wsUrl);
+
+        mlWebSocket.onopen = () => {
+            console.log('ML WebSocket connected - Real-time predictions active');
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+        };
+
+        mlWebSocket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+
+                if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
+                    updateMLCharts(message.data);
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        };
+
+        mlWebSocket.onerror = (error) => {
+            console.error('ML WebSocket error:', error);
+        };
+
+        mlWebSocket.onclose = () => {
+            console.log('ML WebSocket disconnected - Will reconnect in 5s');
+            mlWebSocket = null;
+            reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
+        };
+    }
+
+    function updateMLCharts(predictions) {
+        if (!predictions || !predictions.real_time_monitoring) {
+            console.warn('No real-time monitoring data in WebSocket message');
+            return;
+        }
+
+        const monitoring = predictions.real_time_monitoring;
+
+        // Voltage Anomaly
+        if (monitoring.voltage_anomaly_detection) {
+            const anomaly = monitoring.voltage_anomaly_detection;
+            document.getElementById('anomalyScore').textContent = anomaly.anomaly_score.toFixed(3);
+            document.getElementById('avgVoltage').textContent = anomaly.v_avg.toFixed(1) + 'V';
+
+            const statusEl = document.getElementById('voltageStatus');
+            if (anomaly.is_anomaly) {
+                statusEl.className = 'status-badge status-anomaly';
+                statusEl.textContent = 'Anomaly Detected';
+            } else {
+                statusEl.className = 'status-badge status-normal';
+                statusEl.textContent = 'Normal';
+            }
+        }
+
+        // Harmonic Analysis
+        if (monitoring.harmonic_analysis) {
+            const harmonic = monitoring.harmonic_analysis;
+            document.getElementById('thdValue').textContent = harmonic.thd_percentage.toFixed(2) + '%';
+            document.getElementById('thdCategory').textContent = harmonic.thd_category;
+
+            const thdEl = document.getElementById('thdLevel');
+            if (harmonic.thd_category === 'High' || harmonic.thd_category === 'Critical') {
+                thdEl.className = 'status-badge status-high';
+                thdEl.textContent = 'High';
+            } else if (harmonic.thd_category === 'Moderate') {
+                thdEl.className = 'status-badge status-medium';
+                thdEl.textContent = 'Moderate';
+            } else {
+                thdEl.className = 'status-badge status-low';
+                thdEl.textContent = 'Low';
+            }
+        }
+
+        // Frequency Stability
+        if (monitoring.frequency_stability) {
+            const freq = monitoring.frequency_stability;
+            document.getElementById('stabilityScore').textContent = freq.stability_score.toFixed(1);
+
+            const trendEl = document.getElementById('frequencyTrend');
+            if (freq.deviation_from_nominal > 0.1) {
+                trendEl.className = 'status-badge status-high';
+                trendEl.textContent = 'Unstable';
+            } else {
+                trendEl.className = 'status-badge status-normal';
+                trendEl.textContent = 'Stable';
+            }
+        }
+
+        // Phase Imbalance
+        if (monitoring.phase_imbalance_classification) {
+            const imbalance = monitoring.phase_imbalance_classification;
+            document.getElementById('balanceScore').textContent = imbalance.balance_score.toFixed(1);
+            document.getElementById('maxImbalance').textContent = imbalance.max_imbalance_pct.toFixed(1) + '%';
+
+            const severityEl = document.getElementById('imbalanceSeverity');
+            if (imbalance.severity.toLowerCase() === 'high' || imbalance.severity.toLowerCase() === 'critical') {
+                severityEl.className = 'status-badge status-high';
+                severityEl.textContent = imbalance.severity;
+            } else if (imbalance.severity.toLowerCase() === 'medium') {
+                severityEl.className = 'status-badge status-medium';
+                severityEl.textContent = imbalance.severity;
+            } else {
+                severityEl.className = 'status-badge status-low';
+                severityEl.textContent = imbalance.severity;
+            }
+        }
+    }
+
     // Check simulator mode from global variable
     function updateSimulatorMode() {
         isSimulation = isSimulatorMode;
@@ -719,8 +843,7 @@
         updateSimulatorMode();
         updateVisualizations();
 
-        // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 30000); // TODO: Replace with WebSocket for real-time updates
+        // Real-time updates via WebSocket (no polling needed) // TODO: Replace with WebSocket for real-time updates
     });
 </script>
 {% endblock %}

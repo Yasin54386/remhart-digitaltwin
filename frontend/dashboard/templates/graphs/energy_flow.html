@@ -736,6 +736,95 @@
         }
     }
 
+    // WebSocket connection for real-time ML predictions
+    let mlWebSocket = null;
+    let reconnectTimeout = null;
+
+    function connectMLWebSocket() {
+        if (mlWebSocket && (mlWebSocket.readyState === WebSocket.OPEN || mlWebSocket.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/ml-predictions?is_simulation=${isSimulation}`;
+
+        console.log('Connecting to ML WebSocket:', wsUrl);
+        mlWebSocket = new WebSocket(wsUrl);
+
+        mlWebSocket.onopen = () => {
+            console.log('ML WebSocket connected - Real-time predictions active');
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+        };
+
+        mlWebSocket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+
+                if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
+                    updateMLCharts(message.data);
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        };
+
+        mlWebSocket.onerror = (error) => {
+            console.error('ML WebSocket error:', error);
+        };
+
+        mlWebSocket.onclose = () => {
+            console.log('ML WebSocket disconnected - Will reconnect in 5s');
+            mlWebSocket = null;
+            reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
+        };
+    }
+
+    function updateMLCharts(predictions) {
+        if (!predictions || !predictions.energy_flow) {
+            console.warn('No energy flow data in WebSocket message');
+            return;
+        }
+
+        const energy = predictions.energy_flow;
+
+        // Load Forecasting
+        if (energy.load_forecasting) {
+            const forecast = energy.load_forecasting;
+            if (forecast.current_load_kw !== undefined) {
+                document.getElementById('currentLoad').textContent = forecast.current_load_kw.toFixed(1) + ' kW';
+            }
+            if (forecast.peak_load_time !== undefined) {
+                document.getElementById('peakTime').textContent = 'Hour ' + forecast.peak_load_time;
+            }
+        }
+
+        // Energy Loss
+        if (energy.energy_loss_estimation) {
+            const loss = energy.energy_loss_estimation;
+            document.getElementById('currentLoss').textContent = loss.total_loss_kw.toFixed(2) + ' kW';
+            document.getElementById('efficiency').textContent = loss.efficiency_pct.toFixed(2) + '%';
+        }
+
+        // Power Flow Optimization
+        if (energy.power_flow_optimization) {
+            const flow = energy.power_flow_optimization;
+            document.getElementById('rebalanceNeeded').textContent = flow.rebalancing_needed ? 'Yes' : 'No';
+            document.getElementById('savings').textContent = flow.potential_savings_pct.toFixed(1) + '%';
+        }
+
+        // Demand Response
+        if (energy.demand_response_assessment) {
+            const dr = energy.demand_response_assessment;
+            const clusterNames = ['Low', 'Medium', 'High', 'Peak'];
+            document.getElementById('loadCluster').textContent = clusterNames[dr.load_cluster] || dr.load_cluster;
+            document.getElementById('drPotential').textContent = dr.dr_potential_kw.toFixed(1) + ' kW';
+            document.getElementById('flexScore').textContent = dr.flexibility_score.toFixed(1);
+        }
+    }
+
     // Check simulator mode from global variable
     function updateSimulatorMode() {
         isSimulation = isSimulatorMode;
@@ -753,8 +842,7 @@
         updateSimulatorMode();
         updateVisualizations();
 
-        // Auto-refresh every 5 seconds for latest 200 points
-        setInterval(updateVisualizations, 30000); // TODO: Replace with WebSocket for real-time updates
+        // Real-time updates via WebSocket (no polling needed) // TODO: Replace with WebSocket for real-time updates
     });
 </script>
 {% endblock %}

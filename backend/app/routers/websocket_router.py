@@ -14,7 +14,7 @@ Date: 2025
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import List
 import asyncio
@@ -23,9 +23,10 @@ from datetime import datetime
 
 from app.database import get_db, SessionLocal
 from app.models.db_models import (
-    DateTimeTable, VoltageTable, CurrentTable, 
+    DateTimeTable, VoltageTable, CurrentTable,
     FrequencyTable, ActivePowerTable, ReactivePowerTable
 )
+from app.services.ml_inference_engine import ml_inference_engine
 
 router = APIRouter()
 
@@ -206,13 +207,140 @@ async def broadcast_new_data(data: dict):
     })
 
 
+@router.websocket("/ml-predictions")
+async def ml_predictions_websocket(websocket: WebSocket, is_simulation: bool = False):
+    """
+    WebSocket endpoint for real-time ML predictions streaming.
+
+    Streams predictions from all 16 ML models organized by category:
+    - Real-time Monitoring (4 models)
+    - Predictive Maintenance (4 models)
+    - Energy Flow (4 models)
+    - Decision Making (4 models)
+
+    Args:
+        websocket: WebSocket connection
+        is_simulation: Filter for simulation data
+    """
+    await manager.connect(websocket)
+    try:
+        # Send initial ML predictions on connection
+        db = SessionLocal()
+        try:
+            # Get latest data point
+            query = db.query(DateTimeTable).options(
+                joinedload(DateTimeTable.voltage),
+                joinedload(DateTimeTable.current),
+                joinedload(DateTimeTable.frequency),
+                joinedload(DateTimeTable.active_power),
+                joinedload(DateTimeTable.reactive_power)
+            )
+
+            if is_simulation:
+                query = query.filter(DateTimeTable.is_simulation == True)
+            else:
+                query = query.filter(DateTimeTable.is_simulation == False)
+
+            latest = query.order_by(DateTimeTable.timestamp.desc()).first()
+
+            if latest:
+                # Run ML inference
+                predictions = ml_inference_engine.process_data_point(latest)
+
+                # Send initial predictions
+                await websocket.send_json({
+                    "type": "initial_predictions",
+                    "data": predictions,
+                    "timestamp": latest.timestamp.isoformat()
+                })
+        finally:
+            db.close()
+
+        # Keep connection alive and listen for requests
+        while True:
+            try:
+                data = await websocket.receive_text()
+
+                if data == "ping":
+                    await websocket.send_json({"type": "pong"})
+
+                elif data == "refresh":
+                    # Client requested fresh predictions
+                    db = SessionLocal()
+                    try:
+                        query = db.query(DateTimeTable).options(
+                            joinedload(DateTimeTable.voltage),
+                            joinedload(DateTimeTable.current),
+                            joinedload(DateTimeTable.frequency),
+                            joinedload(DateTimeTable.active_power),
+                            joinedload(DateTimeTable.reactive_power)
+                        )
+
+                        if is_simulation:
+                            query = query.filter(DateTimeTable.is_simulation == True)
+                        else:
+                            query = query.filter(DateTimeTable.is_simulation == False)
+
+                        latest = query.order_by(DateTimeTable.timestamp.desc()).first()
+
+                        if latest:
+                            predictions = ml_inference_engine.process_data_point(latest)
+
+                            await websocket.send_json({
+                                "type": "update",
+                                "data": predictions,
+                                "timestamp": latest.timestamp.isoformat()
+                            })
+                    finally:
+                        db.close()
+
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                print(f"Error processing WebSocket message: {e}")
+                await websocket.send_json({
+                    "type": "error",
+                    "message": str(e)
+                })
+
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        manager.disconnect(websocket)
+
+
+async def broadcast_ml_predictions(predictions: dict):
+    """
+    Broadcast new ML predictions to all connected WebSocket clients.
+
+    Call this function whenever new ML predictions are generated.
+
+    Args:
+        predictions: ML predictions dictionary from ml_inference_engine
+
+    Example:
+        await broadcast_ml_predictions({
+            "real_time_monitoring": {...},
+            "predictive_maintenance": {...},
+            "energy_flow": {...},
+            "decision_making": {...}
+        })
+    """
+    await manager.broadcast({
+        "type": "ml_update",
+        "data": predictions,
+        "timestamp": datetime.now().isoformat()
+    })
+
+
 @router.get("/connections")
 async def get_connection_count():
     """
     Get number of active WebSocket connections.
-    
+
     Useful for monitoring and debugging.
-    
+
     Returns:
         Active connection count
     """

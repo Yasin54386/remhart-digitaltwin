@@ -119,7 +119,7 @@ class ModelManager:
             anomaly_score = model.score_samples(X)[0]
 
             return {
-                'is_anomaly': prediction == -1,
+                'is_anomaly': bool(prediction == -1),
                 'anomaly_score': float(anomaly_score),
                 'confidence': abs(float(anomaly_score)),
                 'severity': self._get_severity(anomaly_score)
@@ -154,7 +154,7 @@ class ModelManager:
 
         return {
             'thd_percentage': features['v_thd_estimated'],
-            'thd_category': thd_category,  # 'Low', 'Medium', 'High'
+            'thd_category': str(thd_category),  # Convert numpy string to Python string
             'harmonics': self._estimate_harmonics(features),
             'quality_impact': self._assess_quality_impact(features['v_thd_estimated'])
         }
@@ -215,12 +215,12 @@ class ModelManager:
         severity = model.predict(X)[0]
 
         return {
-            'severity': severity,  # 'Normal', 'Warning', 'Critical'
+            'severity': str(severity),  # Convert numpy string to Python string
             'voltage_imbalance': features['v_imbalance'],
             'current_imbalance': features['i_imbalance'],
             'power_imbalance': features['p_imbalance'],
             'balance_score': features['overall_balance_score'],
-            'action_required': severity in ['Warning', 'Critical']
+            'action_required': bool(str(severity) in ['Warning', 'Critical'])
         }
 
     # ==================== PREDICTIVE MAINTENANCE PREDICTIONS ====================
@@ -298,10 +298,10 @@ class ModelManager:
             risk_class = model.predict(X)[0]
 
             return {
-                'risk_level': risk_class,  # 'Low', 'Medium', 'High'
+                'risk_level': str(risk_class),  # Convert numpy string to Python string
                 'current_load_pct': self._calculate_load_percentage(features),
                 'peak_phase': self._identify_peak_phase(features),
-                'mitigation_needed': risk_class in ['Medium', 'High']
+                'mitigation_needed': bool(str(risk_class) in ['Medium', 'High'])
             }
         except Exception as e:
             logger.warning(f"Overload risk classification failed, using mock: {e}")

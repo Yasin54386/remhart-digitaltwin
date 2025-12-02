@@ -20,6 +20,9 @@ COPY . .
 # Create directory for ML models
 RUN mkdir -p /app/app/ml_models/trained
 
+# Set Python path so 'app' module can be found
+ENV PYTHONPATH=/app
+
 # Expose port
 EXPOSE 8001
 

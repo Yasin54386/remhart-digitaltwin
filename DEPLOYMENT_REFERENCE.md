@@ -184,11 +184,27 @@ python setup_ml_models.py
 # Exit container (keep it open for next step)
 ```
 
-### Step 6: Seed Database
+### Step 6: Seed Database and Users
 
 ```bash
 # Still inside backend container from Step 5
-# Seed with 5000 data points (~2-3 minutes)
+
+# 6a. Create default user accounts
+python seed_users.py
+
+# Expected output:
+# ======================================================================
+#  REMHART DIGITAL TWIN - USER MANAGEMENT
+# ======================================================================
+# Creating default users...
+# ✓ Created user: admin        (Role: admin    ) Password: admin123
+# ✓ Created user: operator     (Role: operator ) Password: operator123
+# ✓ Created user: analyst      (Role: analyst  ) Password: analyst123
+# ✓ Created user: viewer       (Role: viewer   ) Password: viewer123
+# ✓ Created 4 new users
+# ✓ USER SEEDING COMPLETE!
+
+# 6b. Seed grid data (5000 data points, ~2-3 minutes)
 python seed_database.py --points 5000 --scenario mixed
 
 # Expected output:
@@ -220,9 +236,24 @@ curl http://localhost/health
 echo "Application URL: http://$(curl -s ifconfig.me)"
 
 # Open in browser and verify:
-# - Dashboard loads
-# - Charts display data
-# - No errors in browser console
+# 1. Landing page loads at http://YOUR_IP/
+# 2. Login page accessible at http://YOUR_IP/login/
+# 3. Login with credentials:
+#    Username: admin
+#    Password: admin123
+# 4. Dashboard loads after login
+# 5. Charts display data
+# 6. No errors in browser console
+```
+
+**Default Login Credentials:**
+```
+Username: admin      Password: admin123      Role: Full access
+Username: operator   Password: operator123   Role: Control access
+Username: analyst    Password: analyst123    Role: View + reports
+Username: viewer     Password: viewer123     Role: Read-only
+
+⚠️  IMPORTANT: Change these passwords in production!
 ```
 
 ---
@@ -687,8 +718,17 @@ docker-compose exec mysql mysqldump -u root -p remhart_db > backup.sql
 # Access backend
 docker-compose exec backend bash
 
+# Seed users
+docker-compose exec backend python seed_users.py
+
 # Seed database
 docker-compose exec backend python seed_database.py --points 5000 --scenario mixed
+
+# List all users
+docker-compose exec backend python seed_users.py --list
+
+# Reset users (delete and recreate)
+docker-compose exec backend python seed_users.py --reset
 ```
 
 ### Important Files

@@ -121,7 +121,40 @@ exit
 
 This will generate synthetic data and train all 16 ML models (takes a few minutes).
 
-#### 8. Configure Firewall
+#### 8. Seed Database with Initial Data
+
+Populate the database with initial grid data for monitoring:
+
+```bash
+# Access the backend container
+docker-compose exec backend bash
+
+# Seed the database with 1000 data points (default)
+python seed_database.py
+
+# OR seed with more data points and specific scenario
+python seed_database.py --points 5000 --scenario mixed
+
+# OR clear existing data and seed fresh
+python seed_database.py --clear --points 2000 --scenario normal
+
+# View sample data to verify
+python seed_database.py --points 100 --sample
+
+# Exit the container
+exit
+```
+
+**Available scenarios:**
+- `normal` - Stable grid operation (default)
+- `voltage_sag` - Voltage drop events
+- `overcurrent` - Overload conditions
+- `frequency_drift` - Frequency instability
+- `mixed` - Mixed anomalies for testing
+
+**Tip:** Start with `--points 1000` for quick testing, use `--points 10000` for realistic dashboard visualization.
+
+#### 9. Configure Firewall
 
 ```bash
 # Allow SSH
@@ -138,9 +171,9 @@ ufw --force enable
 ufw status
 ```
 
-#### 9. Access Your Application
+#### 10. Access Your Application
 
-Visit `http://your-droplet-ip` in your browser.
+Visit `http://your-droplet-ip` in your browser. For example: `http://159.89.199.144`
 
 ### Option 2: DigitalOcean App Platform
 

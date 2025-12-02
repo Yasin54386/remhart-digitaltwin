@@ -113,13 +113,10 @@ app = FastAPI(
 # ============================================
 
 # Allow Django frontend to access the API
+# In production, allow all origins since we're behind nginx proxy
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8000",      # Django dev server
-        "http://127.0.0.1:8000",
-        "http://localhost:3000",      # Alternative frontend ports
-    ],
+    allow_origins=["*"],  # Allow all origins (safe behind nginx)
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers

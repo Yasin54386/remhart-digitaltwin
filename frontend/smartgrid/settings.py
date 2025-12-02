@@ -23,9 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-4=)2niw&zo!w_m(q=h-lw7i^&o=^t8^qj19$#m(0%b4h7uwuk%'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+import os
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+# Allow all hosts when behind nginx proxy
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -82,8 +84,9 @@ DATABASES = {
 }
 
 # FastAPI backend URLs
-FASTAPI_BASE_URL = "http://127.0.0.1:8001"
-FASTAPI_WS_URL = "ws://127.0.0.1:8001/ws/grid-data" #web-socket URL for live data
+BACKEND_URL = os.getenv('BACKEND_URL', 'http://backend:8001')
+FASTAPI_BASE_URL = BACKEND_URL
+FASTAPI_WS_URL = BACKEND_URL.replace('http://', 'ws://') + '/ws/grid-data'
 
 
 # Password validation

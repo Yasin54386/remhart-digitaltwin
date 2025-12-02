@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: remhart_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DB:-remhart_db}
+      MYSQL_USER: ${MYSQL_USER:-remhart}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-remhart123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - remhart_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: remhart_backend
+    environment:
+      FRONTEND_URL: ${FRONTEND_URL:-http://frontend:8000}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-remhart}:${MYSQL_PASSWORD:-remhart123}@mysql:3306/${MYSQL_DB:-remhart_db}
+      SECRET_KEY: ${SECRET_KEY:-change-this-secret-key-in-production}
+      MYSQL_USER: ${MYSQL_USER:-remhart}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-remhart123}
+      MYSQL_SERVER: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DB: ${MYSQL_DB:-remhart_db}
+    ports:
+      - "8001:8001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - remhart_network
+    volumes:
+      - ml_models:/app/app/ml_models/trained
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: remhart_frontend
+    environment:
+      BACKEND_URL: http://backend:8001
+      DEBUG: ${DEBUG:-False}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - backend
+    networks:
+      - remhart_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: remhart_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - remhart_network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  ml_models:
+
+networks:
+  remhart_network:
+    driver: bridge

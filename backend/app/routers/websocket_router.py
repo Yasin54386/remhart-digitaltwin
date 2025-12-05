@@ -246,8 +246,11 @@ async def ml_predictions_websocket(websocket: WebSocket, is_simulation: bool = F
             if latest:
                 # Run ML inference
                 predictions = ml_inference_engine.process_data_point(latest)
-
-                # Send initial predictions
+                # # --- ADD CHECK HERE ---
+                # print(f"Predictions Type: {type(predictions)}")
+                # print(f"Predictions Content Sample: {predictions}")
+                # # -----------------------
+                # # Send initial predictions
                 await websocket.send_json({
                     "type": "initial_predictions",
                     "data": predictions,

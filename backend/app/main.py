@@ -22,9 +22,14 @@ from sqlalchemy.orm import Session
 import uvicorn
 from contextlib import asynccontextmanager
 
+# --- WARNING SUPPRESSION (Place it here!) ---
+import warnings
+warnings.simplefilter(action='ignore', category=UserWarning)
+
 # Import database and models
 from app.database import init_db, check_db_connection, get_db
 from app.utils.security import create_default_users
+
 
 # Import routers
 from app.routers import auth, grid_data, websocket_router, simulator, reports

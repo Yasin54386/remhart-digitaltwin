@@ -607,7 +607,7 @@
         }
 
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/ml-predictions?is_simulation=${isSimulation}`;
+        const wsUrl = `${wsProtocol}//${window.location.hostname}:8001/ws/ml-predictions?is_simulation=${isSimulation}`;
 
         console.log('Connecting to ML WebSocket:', wsUrl);
         mlWebSocket = new WebSocket(wsUrl);

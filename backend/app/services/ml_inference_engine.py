@@ -50,7 +50,7 @@ class MLInferenceEngine:
 
             # Step 3: Add metadata
             predictions['metadata'] = {
-                'timestamp': data_point.timestamp,
+                'timestamp': data_point.timestamp.isoformat(),
                 'is_simulation': data_point.is_simulation,
                 'data_quality': self._assess_data_quality(data_point)
             }

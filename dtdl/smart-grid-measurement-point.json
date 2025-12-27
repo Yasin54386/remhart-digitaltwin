@@ -1,0 +1,520 @@
+{
+  "@context": "dtmi:dtdl:context;3",
+  "@id": "dtmi:remhart:smartgrid:GridMeasurementPoint;1",
+  "@type": "Interface",
+  "displayName": "Smart Grid Measurement Point",
+  "description": "Digital twin interface for a smart grid electrical measurement point with 3-phase monitoring capabilities",
+  "comment": "Core digital twin for REMHART Smart Grid monitoring system - represents a single measurement point in the electrical grid",
+  "contents": [
+    {
+      "@type": "Property",
+      "name": "location",
+      "displayName": "Geographic Location",
+      "description": "Physical location of the measurement point",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "latitude",
+            "schema": "double"
+          },
+          {
+            "name": "longitude",
+            "schema": "double"
+          },
+          {
+            "name": "address",
+            "schema": "string"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Property",
+      "name": "gridStandard",
+      "displayName": "Grid Standard",
+      "description": "Electrical grid standard configuration",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "nominalVoltage",
+            "schema": "double",
+            "displayName": "Nominal Voltage (V)",
+            "comment": "Default: 230V for Australian grid"
+          },
+          {
+            "name": "nominalFrequency",
+            "schema": "double",
+            "displayName": "Nominal Frequency (Hz)",
+            "comment": "Default: 50Hz for Australian grid"
+          },
+          {
+            "name": "phaseConfiguration",
+            "schema": "string",
+            "displayName": "Phase Configuration",
+            "comment": "3-phase system"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Property",
+      "name": "isSimulation",
+      "displayName": "Simulation Mode",
+      "description": "Indicates if data is from simulation or real sensors",
+      "schema": "boolean"
+    },
+    {
+      "@type": "Property",
+      "name": "simulationMetadata",
+      "displayName": "Simulation Metadata",
+      "description": "Metadata for simulation scenarios",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "simulationId",
+            "schema": "string"
+          },
+          {
+            "name": "simulationName",
+            "schema": "string"
+          },
+          {
+            "name": "scenarioType",
+            "schema": "string"
+          },
+          {
+            "name": "parameters",
+            "schema": "string",
+            "comment": "JSON string of scenario parameters"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "voltage",
+      "displayName": "3-Phase Voltage",
+      "description": "Real-time voltage measurements across three phases",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "phaseA",
+            "schema": "double",
+            "displayName": "Phase A Voltage (V)"
+          },
+          {
+            "name": "phaseB",
+            "schema": "double",
+            "displayName": "Phase B Voltage (V)"
+          },
+          {
+            "name": "phaseC",
+            "schema": "double",
+            "displayName": "Phase C Voltage (V)"
+          },
+          {
+            "name": "average",
+            "schema": "double",
+            "displayName": "Average Voltage (V)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "current",
+      "displayName": "3-Phase Current",
+      "description": "Real-time current measurements across three phases",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "phaseA",
+            "schema": "double",
+            "displayName": "Phase A Current (A)"
+          },
+          {
+            "name": "phaseB",
+            "schema": "double",
+            "displayName": "Phase B Current (A)"
+          },
+          {
+            "name": "phaseC",
+            "schema": "double",
+            "displayName": "Phase C Current (A)"
+          },
+          {
+            "name": "average",
+            "schema": "double",
+            "displayName": "Average Current (A)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "frequency",
+      "displayName": "Grid Frequency",
+      "description": "Real-time grid frequency measurement",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "value",
+            "schema": "double",
+            "displayName": "Frequency (Hz)"
+          },
+          {
+            "name": "deviation",
+            "schema": "double",
+            "displayName": "Deviation from Nominal (Hz)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "activePower",
+      "displayName": "3-Phase Active Power",
+      "description": "Real power consumption across three phases",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "phaseA",
+            "schema": "double",
+            "displayName": "Phase A Active Power (W)"
+          },
+          {
+            "name": "phaseB",
+            "schema": "double",
+            "displayName": "Phase B Active Power (W)"
+          },
+          {
+            "name": "phaseC",
+            "schema": "double",
+            "displayName": "Phase C Active Power (W)"
+          },
+          {
+            "name": "total",
+            "schema": "double",
+            "displayName": "Total Active Power (W)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "reactivePower",
+      "displayName": "3-Phase Reactive Power",
+      "description": "Reactive power across three phases",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "phaseA",
+            "schema": "double",
+            "displayName": "Phase A Reactive Power (VAR)"
+          },
+          {
+            "name": "phaseB",
+            "schema": "double",
+            "displayName": "Phase B Reactive Power (VAR)"
+          },
+          {
+            "name": "phaseC",
+            "schema": "double",
+            "displayName": "Phase C Reactive Power (VAR)"
+          },
+          {
+            "name": "total",
+            "schema": "double",
+            "displayName": "Total Reactive Power (VAR)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "powerQuality",
+      "displayName": "Power Quality Metrics",
+      "description": "Comprehensive power quality indicators",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "voltageImbalance",
+            "schema": "double",
+            "displayName": "Voltage Imbalance (%)"
+          },
+          {
+            "name": "currentImbalance",
+            "schema": "double",
+            "displayName": "Current Imbalance (%)"
+          },
+          {
+            "name": "totalHarmonicDistortion",
+            "schema": "double",
+            "displayName": "THD (%)"
+          },
+          {
+            "name": "powerFactor",
+            "schema": "double",
+            "displayName": "Power Factor"
+          },
+          {
+            "name": "qualityScore",
+            "schema": "double",
+            "displayName": "Overall Quality Score (0-100)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "mlPredictions",
+      "displayName": "ML/AI Predictions",
+      "description": "Real-time predictions from 16 ML models across 4 modules",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "voltageAnomalyDetected",
+            "schema": "boolean",
+            "displayName": "Voltage Anomaly Detected"
+          },
+          {
+            "name": "voltageAnomalyScore",
+            "schema": "double",
+            "displayName": "Anomaly Score (-1 to 1)"
+          },
+          {
+            "name": "harmonicDistortionLevel",
+            "schema": "string",
+            "displayName": "Harmonic Distortion Level (low/medium/high)"
+          },
+          {
+            "name": "frequencyStabilityPrediction",
+            "schema": "double",
+            "displayName": "Predicted Frequency Stability (Hz)"
+          },
+          {
+            "name": "phaseImbalanceClass",
+            "schema": "string",
+            "displayName": "Phase Imbalance Classification"
+          },
+          {
+            "name": "equipmentFailureRisk",
+            "schema": "double",
+            "displayName": "Equipment Failure Risk (0-1)"
+          },
+          {
+            "name": "overloadRiskLevel",
+            "schema": "string",
+            "displayName": "Overload Risk (low/medium/high)"
+          },
+          {
+            "name": "powerQualityIndex",
+            "schema": "double",
+            "displayName": "Power Quality Index (0-100)"
+          },
+          {
+            "name": "loadForecast",
+            "schema": "double",
+            "displayName": "Load Forecast (W)"
+          },
+          {
+            "name": "energyLossEstimate",
+            "schema": "double",
+            "displayName": "Energy Loss Estimate (%)"
+          },
+          {
+            "name": "gridStabilityScore",
+            "schema": "double",
+            "displayName": "Grid Stability Score (0-100)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Command",
+      "name": "startSimulation",
+      "displayName": "Start Grid Simulation",
+      "description": "Start a new grid simulation scenario",
+      "request": {
+        "name": "simulationConfig",
+        "schema": {
+          "@type": "Object",
+          "fields": [
+            {
+              "name": "scenarioType",
+              "schema": "string",
+              "displayName": "Scenario Type (normal/overload/fault/renewable/demand_response)"
+            },
+            {
+              "name": "simulationName",
+              "schema": "string"
+            },
+            {
+              "name": "duration",
+              "schema": "integer",
+              "displayName": "Duration (seconds)"
+            },
+            {
+              "name": "parameters",
+              "schema": "string",
+              "displayName": "JSON parameters"
+            }
+          ]
+        }
+      },
+      "response": {
+        "name": "simulationStatus",
+        "schema": {
+          "@type": "Object",
+          "fields": [
+            {
+              "name": "simulationId",
+              "schema": "string"
+            },
+            {
+              "name": "status",
+              "schema": "string"
+            },
+            {
+              "name": "message",
+              "schema": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "@type": "Command",
+      "name": "stopSimulation",
+      "displayName": "Stop Grid Simulation",
+      "description": "Stop the currently active simulation",
+      "response": {
+        "name": "status",
+        "schema": "string"
+      }
+    },
+    {
+      "@type": "Command",
+      "name": "generateReport",
+      "displayName": "Generate Analysis Report",
+      "description": "Generate a comprehensive grid analysis report",
+      "request": {
+        "name": "reportConfig",
+        "schema": {
+          "@type": "Object",
+          "fields": [
+            {
+              "name": "startDate",
+              "schema": "dateTime"
+            },
+            {
+              "name": "endDate",
+              "schema": "dateTime"
+            },
+            {
+              "name": "reportType",
+              "schema": "string",
+              "displayName": "Report Type (summary/detailed/ml_insights)"
+            },
+            {
+              "name": "format",
+              "schema": "string",
+              "displayName": "Format (pdf/csv/json)"
+            }
+          ]
+        }
+      },
+      "response": {
+        "name": "reportUrl",
+        "schema": "string"
+      }
+    },
+    {
+      "@type": "Command",
+      "name": "runMLInference",
+      "displayName": "Run ML Inference",
+      "description": "Execute ML inference across all 16 models",
+      "request": {
+        "name": "inferenceConfig",
+        "schema": {
+          "@type": "Object",
+          "fields": [
+            {
+              "name": "modules",
+              "schema": "string",
+              "displayName": "Modules to run (monitoring/maintenance/energy/decision/all)"
+            },
+            {
+              "name": "includeExplanation",
+              "schema": "boolean"
+            }
+          ]
+        }
+      },
+      "response": {
+        "name": "predictions",
+        "schema": "string",
+        "displayName": "JSON predictions from all models"
+      }
+    },
+    {
+      "@type": "Relationship",
+      "name": "managedBy",
+      "displayName": "Managed By",
+      "description": "User or system managing this measurement point",
+      "target": "dtmi:remhart:smartgrid:User;1"
+    },
+    {
+      "@type": "Relationship",
+      "name": "connectedTo",
+      "displayName": "Connected To",
+      "description": "Relationships to other grid components (transformers, substations, etc.)",
+      "target": "dtmi:remhart:smartgrid:GridComponent;1"
+    },
+    {
+      "@type": "Component",
+      "name": "mlEngine",
+      "displayName": "ML/AI Engine",
+      "description": "Embedded ML inference engine with 16 models",
+      "schema": "dtmi:remhart:smartgrid:MLEngine;1"
+    }
+  ]
+}

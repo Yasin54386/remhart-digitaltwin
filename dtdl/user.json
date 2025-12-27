@@ -1,0 +1,114 @@
+{
+  "@context": "dtmi:dtdl:context;3",
+  "@id": "dtmi:remhart:smartgrid:User;1",
+  "@type": "Interface",
+  "displayName": "System User",
+  "description": "User interface for REMHART Digital Twin system with RBAC",
+  "comment": "Role-Based Access Control: admin, operator, analyst, viewer",
+  "contents": [
+    {
+      "@type": "Property",
+      "name": "username",
+      "displayName": "Username",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "email",
+      "displayName": "Email Address",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "fullName",
+      "displayName": "Full Name",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "role",
+      "displayName": "User Role",
+      "description": "RBAC role assignment",
+      "schema": {
+        "@type": "Enum",
+        "valueSchema": "string",
+        "enumValues": [
+          {
+            "name": "admin",
+            "displayName": "Administrator",
+            "description": "Full system access, user management, configuration",
+            "enumValue": "admin"
+          },
+          {
+            "name": "operator",
+            "displayName": "Grid Operator",
+            "description": "Monitoring, simulation control, reports",
+            "enumValue": "operator"
+          },
+          {
+            "name": "analyst",
+            "displayName": "Data Analyst",
+            "description": "Read access to data, ML insights, reports",
+            "enumValue": "analyst"
+          },
+          {
+            "name": "viewer",
+            "displayName": "Viewer",
+            "description": "Read-only dashboard access",
+            "enumValue": "viewer"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Property",
+      "name": "isActive",
+      "displayName": "Account Active",
+      "schema": "boolean"
+    },
+    {
+      "@type": "Property",
+      "name": "createdAt",
+      "displayName": "Account Created",
+      "schema": "dateTime"
+    },
+    {
+      "@type": "Property",
+      "name": "lastLogin",
+      "displayName": "Last Login",
+      "schema": "dateTime"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "activity",
+      "displayName": "User Activity",
+      "description": "User activity telemetry",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "action",
+            "schema": "string",
+            "displayName": "Action performed"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          },
+          {
+            "name": "resource",
+            "schema": "string",
+            "displayName": "Resource accessed"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Relationship",
+      "name": "manages",
+      "displayName": "Manages",
+      "description": "Grid measurement points managed by this user",
+      "target": "dtmi:remhart:smartgrid:GridMeasurementPoint;1"
+    }
+  ]
+}

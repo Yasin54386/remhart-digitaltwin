@@ -1,0 +1,634 @@
+{
+  "@context": "dtmi:dtdl:context;3",
+  "@id": "dtmi:remhart:smartgrid:MLEngine;1",
+  "@type": "Interface",
+  "displayName": "ML/AI Inference Engine",
+  "description": "Machine Learning engine with 16 trained models across 4 modules for intelligent grid analytics",
+  "comment": "Embedded ML/AI component for real-time grid intelligence - Singleton design pattern",
+  "contents": [
+    {
+      "@type": "Property",
+      "name": "engineVersion",
+      "displayName": "Engine Version",
+      "description": "Version of the ML engine",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "modelRegistry",
+      "displayName": "Model Registry",
+      "description": "Registry of all 16 ML models",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "totalModels",
+            "schema": "integer",
+            "displayName": "Total Models Loaded",
+            "comment": "Expected: 16"
+          },
+          {
+            "name": "monitoringModels",
+            "schema": "integer",
+            "displayName": "Real-time Monitoring Models",
+            "comment": "4 models: Voltage Anomaly, Harmonic Analysis, Frequency Stability, Phase Imbalance"
+          },
+          {
+            "name": "maintenanceModels",
+            "schema": "integer",
+            "displayName": "Predictive Maintenance Models",
+            "comment": "4 models: Equipment Failure, Overload Risk, Power Quality Index, Voltage Sag"
+          },
+          {
+            "name": "energyModels",
+            "schema": "integer",
+            "displayName": "Energy Flow Models",
+            "comment": "4 models: Load Forecasting, Energy Loss, Power Flow Optimization, Demand Response"
+          },
+          {
+            "name": "decisionModels",
+            "schema": "integer",
+            "displayName": "Decision Making Models",
+            "comment": "4 models: Reactive Power Compensation, Load Balancing, Grid Stability, Optimal Dispatch"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Property",
+      "name": "featureEngineering",
+      "displayName": "Feature Engineering Configuration",
+      "description": "Feature extraction configuration - 80+ engineered features",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "totalFeatures",
+            "schema": "integer",
+            "displayName": "Total Features Extracted",
+            "comment": "80+ features from raw measurements"
+          },
+          {
+            "name": "voltageFeatures",
+            "schema": "integer",
+            "comment": "11 features: phase values, variance, imbalance, deviation, rate of change"
+          },
+          {
+            "name": "currentFeatures",
+            "schema": "integer",
+            "comment": "11 features: phase values, variance, imbalance, spikes"
+          },
+          {
+            "name": "frequencyFeatures",
+            "schema": "integer",
+            "comment": "6 features: value, deviation, rate of change, thresholds"
+          },
+          {
+            "name": "powerFeatures",
+            "schema": "integer",
+            "comment": "14 features: active, reactive, apparent power, power factor per phase"
+          },
+          {
+            "name": "balanceFeatures",
+            "schema": "integer",
+            "comment": "4 features: voltage/current/power imbalance, balance score"
+          },
+          {
+            "name": "qualityFeatures",
+            "schema": "integer",
+            "comment": "5 features: THD, quality scores"
+          },
+          {
+            "name": "timeSeriesFeatures",
+            "schema": "integer",
+            "comment": "20 features: rolling statistics, trends"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "monitoringPredictions",
+      "displayName": "Real-time Monitoring Predictions",
+      "description": "Output from Module 1: Real-time Monitoring (4 models)",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "voltageAnomalyDetection",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Isolation Forest"
+                },
+                {
+                  "name": "anomalyDetected",
+                  "schema": "boolean"
+                },
+                {
+                  "name": "anomalyScore",
+                  "schema": "double",
+                  "displayName": "Score (-1 to 1)"
+                },
+                {
+                  "name": "accuracy",
+                  "schema": "double",
+                  "displayName": "Model Accuracy (~95%)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "harmonicAnalysis",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Random Forest + FFT"
+                },
+                {
+                  "name": "thdEstimate",
+                  "schema": "double",
+                  "displayName": "THD Estimate (%)"
+                },
+                {
+                  "name": "harmonicLevel",
+                  "schema": "string",
+                  "displayName": "Level (low/medium/high)"
+                },
+                {
+                  "name": "accuracy",
+                  "schema": "double",
+                  "displayName": "Model Accuracy (~90%)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "frequencyStability",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "LSTM Neural Network"
+                },
+                {
+                  "name": "predictedFrequency",
+                  "schema": "double",
+                  "displayName": "Predicted Frequency (Hz)"
+                },
+                {
+                  "name": "stabilityScore",
+                  "schema": "double"
+                },
+                {
+                  "name": "mae",
+                  "schema": "double",
+                  "displayName": "Mean Absolute Error (<0.05 Hz)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "phaseImbalance",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Decision Tree Classifier"
+                },
+                {
+                  "name": "imbalanceClass",
+                  "schema": "string",
+                  "displayName": "Classification (balanced/minor/moderate/severe)"
+                },
+                {
+                  "name": "confidence",
+                  "schema": "double"
+                },
+                {
+                  "name": "accuracy",
+                  "schema": "double",
+                  "displayName": "Model Accuracy (~92%)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "maintenancePredictions",
+      "displayName": "Predictive Maintenance Predictions",
+      "description": "Output from Module 2: Predictive Maintenance (4 models)",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "equipmentFailure",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "XGBoost"
+                },
+                {
+                  "name": "failureRisk",
+                  "schema": "double",
+                  "displayName": "Failure Risk Probability (0-1)"
+                },
+                {
+                  "name": "timeToFailure",
+                  "schema": "integer",
+                  "displayName": "Estimated Time to Failure (hours)"
+                },
+                {
+                  "name": "accuracy",
+                  "schema": "double",
+                  "displayName": "Model Accuracy (~88%)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "overloadRisk",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Support Vector Machine (SVM)"
+                },
+                {
+                  "name": "riskLevel",
+                  "schema": "string",
+                  "displayName": "Risk Level (low/medium/high/critical)"
+                },
+                {
+                  "name": "riskScore",
+                  "schema": "double"
+                },
+                {
+                  "name": "accuracy",
+                  "schema": "double",
+                  "displayName": "Model Accuracy (~90%)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "powerQualityIndex",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Neural Network"
+                },
+                {
+                  "name": "qualityIndex",
+                  "schema": "double",
+                  "displayName": "Power Quality Index (0-100)"
+                },
+                {
+                  "name": "r2Score",
+                  "schema": "double",
+                  "displayName": "R² Score (>0.85)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "voltageSag",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Random Forest"
+                },
+                {
+                  "name": "sagProbability",
+                  "schema": "double",
+                  "displayName": "Voltage Sag Probability"
+                },
+                {
+                  "name": "sagDepth",
+                  "schema": "double",
+                  "displayName": "Expected Sag Depth (%)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "energyPredictions",
+      "displayName": "Energy Flow Predictions",
+      "description": "Output from Module 3: Energy Flow (4 models)",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "loadForecast",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Prophet/LSTM"
+                },
+                {
+                  "name": "forecastedLoad",
+                  "schema": "double",
+                  "displayName": "Forecasted Load (W)"
+                },
+                {
+                  "name": "mape",
+                  "schema": "double",
+                  "displayName": "Mean Absolute Percentage Error (<10%)"
+                },
+                {
+                  "name": "forecastHorizon",
+                  "schema": "integer",
+                  "displayName": "Forecast Horizon (minutes)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "energyLoss",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Linear Regression"
+                },
+                {
+                  "name": "estimatedLoss",
+                  "schema": "double",
+                  "displayName": "Energy Loss (%)"
+                },
+                {
+                  "name": "lossInWatts",
+                  "schema": "double"
+                }
+              ]
+            }
+          },
+          {
+            "name": "powerFlowOptimization",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Linear Programming"
+                },
+                {
+                  "name": "optimalConfiguration",
+                  "schema": "string",
+                  "displayName": "Recommended configuration (JSON)"
+                },
+                {
+                  "name": "efficiencyGain",
+                  "schema": "double",
+                  "displayName": "Efficiency Gain (%)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "demandResponse",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "K-Means Clustering"
+                },
+                {
+                  "name": "demandCluster",
+                  "schema": "string",
+                  "displayName": "Demand Pattern Cluster"
+                },
+                {
+                  "name": "responseRecommendation",
+                  "schema": "string"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "decisionPredictions",
+      "displayName": "Decision Making Predictions",
+      "description": "Output from Module 4: Decision Making (4 models)",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "reactivePowerCompensation",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Neural Network"
+                },
+                {
+                  "name": "recommendedCompensation",
+                  "schema": "double",
+                  "displayName": "Recommended Reactive Power (VAR)"
+                },
+                {
+                  "name": "expectedPowerFactor",
+                  "schema": "double"
+                }
+              ]
+            }
+          },
+          {
+            "name": "loadBalancing",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Multi-Criteria Decision Analysis"
+                },
+                {
+                  "name": "balancingRecommendation",
+                  "schema": "string",
+                  "displayName": "Load balancing strategy (JSON)"
+                },
+                {
+                  "name": "balanceScore",
+                  "schema": "double"
+                }
+              ]
+            }
+          },
+          {
+            "name": "gridStability",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Ensemble Model"
+                },
+                {
+                  "name": "stabilityScore",
+                  "schema": "double",
+                  "displayName": "Stability Score (0-100)"
+                },
+                {
+                  "name": "stabilityClass",
+                  "schema": "string",
+                  "displayName": "Classification (stable/unstable/critical)"
+                }
+              ]
+            }
+          },
+          {
+            "name": "optimalDispatch",
+            "schema": {
+              "@type": "Object",
+              "fields": [
+                {
+                  "name": "modelType",
+                  "schema": "string",
+                  "displayName": "Support Vector Regression (SVR)"
+                },
+                {
+                  "name": "dispatchRecommendation",
+                  "schema": "string",
+                  "displayName": "Optimal dispatch strategy (JSON)"
+                },
+                {
+                  "name": "costSavings",
+                  "schema": "double",
+                  "displayName": "Expected Cost Savings (%)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "inferenceMetrics",
+      "displayName": "ML Inference Performance Metrics",
+      "description": "Performance metrics for the ML engine",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "totalInferences",
+            "schema": "long",
+            "displayName": "Total Inferences Executed"
+          },
+          {
+            "name": "averageInferenceTime",
+            "schema": "double",
+            "displayName": "Average Inference Time (ms)"
+          },
+          {
+            "name": "modelsActive",
+            "schema": "integer",
+            "displayName": "Currently Active Models"
+          },
+          {
+            "name": "lastInferenceTimestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Command",
+      "name": "reloadModels",
+      "displayName": "Reload ML Models",
+      "description": "Reload all 16 ML models from disk",
+      "response": {
+        "name": "status",
+        "schema": {
+          "@type": "Object",
+          "fields": [
+            {
+              "name": "success",
+              "schema": "boolean"
+            },
+            {
+              "name": "modelsLoaded",
+              "schema": "integer"
+            },
+            {
+              "name": "message",
+              "schema": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "@type": "Command",
+      "name": "runInference",
+      "displayName": "Run ML Inference",
+      "description": "Execute inference across specified modules",
+      "request": {
+        "name": "config",
+        "schema": {
+          "@type": "Object",
+          "fields": [
+            {
+              "name": "modules",
+              "schema": "string",
+              "displayName": "Comma-separated modules (monitoring,maintenance,energy,decision)"
+            },
+            {
+              "name": "gridData",
+              "schema": "string",
+              "displayName": "Input grid data (JSON)"
+            }
+          ]
+        }
+      },
+      "response": {
+        "name": "predictions",
+        "schema": "string",
+        "displayName": "JSON predictions"
+      }
+    }
+  ]
+}

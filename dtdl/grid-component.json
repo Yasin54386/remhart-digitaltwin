@@ -1,0 +1,182 @@
+{
+  "@context": "dtmi:dtdl:context;3",
+  "@id": "dtmi:remhart:smartgrid:GridComponent;1",
+  "@type": "Interface",
+  "displayName": "Smart Grid Component",
+  "description": "Generic interface for smart grid physical components (transformers, substations, circuit breakers, etc.)",
+  "comment": "Extensible interface for future grid topology modeling",
+  "contents": [
+    {
+      "@type": "Property",
+      "name": "componentType",
+      "displayName": "Component Type",
+      "description": "Type of grid component",
+      "schema": {
+        "@type": "Enum",
+        "valueSchema": "string",
+        "enumValues": [
+          {
+            "name": "transformer",
+            "displayName": "Transformer",
+            "enumValue": "transformer"
+          },
+          {
+            "name": "substation",
+            "displayName": "Substation",
+            "enumValue": "substation"
+          },
+          {
+            "name": "circuitBreaker",
+            "displayName": "Circuit Breaker",
+            "enumValue": "circuit_breaker"
+          },
+          {
+            "name": "capacitorBank",
+            "displayName": "Capacitor Bank",
+            "enumValue": "capacitor_bank"
+          },
+          {
+            "name": "meter",
+            "displayName": "Smart Meter",
+            "enumValue": "meter"
+          },
+          {
+            "name": "transmissionLine",
+            "displayName": "Transmission Line",
+            "enumValue": "transmission_line"
+          },
+          {
+            "name": "renewableSource",
+            "displayName": "Renewable Energy Source",
+            "enumValue": "renewable_source"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Property",
+      "name": "componentId",
+      "displayName": "Component ID",
+      "description": "Unique identifier for the component",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "location",
+      "displayName": "Physical Location",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "latitude",
+            "schema": "double"
+          },
+          {
+            "name": "longitude",
+            "schema": "double"
+          },
+          {
+            "name": "address",
+            "schema": "string"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Property",
+      "name": "ratedCapacity",
+      "displayName": "Rated Capacity",
+      "description": "Rated capacity of the component (e.g., kVA for transformers)",
+      "schema": "double"
+    },
+    {
+      "@type": "Property",
+      "name": "manufacturer",
+      "displayName": "Manufacturer",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "installationDate",
+      "displayName": "Installation Date",
+      "schema": "date"
+    },
+    {
+      "@type": "Property",
+      "name": "status",
+      "displayName": "Operational Status",
+      "schema": {
+        "@type": "Enum",
+        "valueSchema": "string",
+        "enumValues": [
+          {
+            "name": "operational",
+            "enumValue": "operational"
+          },
+          {
+            "name": "maintenance",
+            "enumValue": "maintenance"
+          },
+          {
+            "name": "fault",
+            "enumValue": "fault"
+          },
+          {
+            "name": "offline",
+            "enumValue": "offline"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Telemetry",
+      "name": "healthMetrics",
+      "displayName": "Component Health Metrics",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "healthScore",
+            "schema": "double",
+            "displayName": "Health Score (0-100)"
+          },
+          {
+            "name": "temperature",
+            "schema": "double",
+            "displayName": "Operating Temperature (°C)"
+          },
+          {
+            "name": "loadFactor",
+            "schema": "double",
+            "displayName": "Load Factor (0-1)"
+          },
+          {
+            "name": "timestamp",
+            "schema": "dateTime"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "Relationship",
+      "name": "feedsTo",
+      "displayName": "Feeds To",
+      "description": "Downstream grid components fed by this component",
+      "target": "dtmi:remhart:smartgrid:GridComponent;1"
+    },
+    {
+      "@type": "Relationship",
+      "name": "fedBy",
+      "displayName": "Fed By",
+      "description": "Upstream grid components feeding this component",
+      "target": "dtmi:remhart:smartgrid:GridComponent;1"
+    },
+    {
+      "@type": "Relationship",
+      "name": "monitoredBy",
+      "displayName": "Monitored By",
+      "description": "Measurement points monitoring this component",
+      "target": "dtmi:remhart:smartgrid:GridMeasurementPoint;1"
+    }
+  ]
+}

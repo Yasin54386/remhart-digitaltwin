@@ -93,8 +93,8 @@ class FeatureEngineer:
         v_b = voltage.phaseB
         v_c = voltage.phaseC
 
-        # Calculate variance from history
-        v_variance = np.var(list(self.history['voltage_avg'])[-50:]) if len(self.history['voltage_avg']) >= 10 else 0
+        # Cross-phase variance (matches training: df[['v_a','v_b','v_c']].var(axis=1))
+        v_variance = np.var([v_a, v_b, v_c])
 
         # Calculate imbalance
         v_imbalance = self._calculate_imbalance(v_a, v_b, v_c)
@@ -131,8 +131,8 @@ class FeatureEngineer:
         i_b = current.phaseB
         i_c = current.phaseC
 
-        # Calculate variance
-        i_variance = np.var(list(self.history['current_avg'])[-50:]) if len(self.history['current_avg']) >= 10 else 0
+        # Cross-phase variance (matches training: df[['i_a','i_b','i_c']].var(axis=1))
+        i_variance = np.var([i_a, i_b, i_c])
 
         # Calculate imbalance
         i_imbalance = self._calculate_imbalance(i_a, i_b, i_c)
@@ -233,7 +233,8 @@ class FeatureEngineer:
         p_imb = self._calculate_imbalance(power.phaseA, power.phaseB, power.phaseC)
 
         # Overall balance score (0-100, higher is better)
-        balance_score = max(0, 100 - (v_imb + i_imb + p_imb))
+        # Matches training: 100 - ((v_imb + i_imb + p_imb) / 3).clip(0, 100)
+        balance_score = max(0, 100 - (v_imb + i_imb + p_imb) / 3)
 
         return {
             'v_imbalance': v_imb,
@@ -248,12 +249,14 @@ class FeatureEngineer:
         f_features = self._extract_frequency_features(data_point)
         p_features = self._extract_power_features(data_point)
 
-        # Estimate THD from variance (simplified)
-        v_thd_est = min(v_features.get('v_variance', 0) * 10, 20.0)  # Cap at 20%
+        # Estimate THD from cross-phase variance (matches training: v_variance / 10)
+        v_thd_est = min(v_features.get('v_variance', 0) / 10, 20.0)  # Cap at 20%
 
         # Power Quality Index components
-        v_quality = max(0, 100 - v_features.get('v_deviation_pct', 0) * 10)
-        f_quality = max(0, 100 - f_features.get('f_deviation', 0) * 200)
+        # v_quality: matches training: 100 - v_deviation (v_deviation already in %)
+        v_quality = max(0, 100 - v_features.get('v_deviation_pct', 0))
+        # f_quality: matches training: 100 - (f_deviation * 100).clip(0, 100)
+        f_quality = max(0, 100 - f_features.get('f_deviation', 0) * 100)
         pf_quality = p_features.get('power_factor', 0.9) * 100
 
         # Overall PQI
@@ -270,24 +273,38 @@ class FeatureEngineer:
         }
 
     def _extract_time_series_features(self) -> Dict:
-        """Extract time-series statistical features"""
+        """
+        Extract time-series statistical features using a 10-point rolling window.
+        Matches training: df[param].rolling(window=10, min_periods=1).mean/std/etc.
+        Trend matches training: rolling(10).mean().diff() = change in 10-period MA.
+        """
         features = {}
+        WINDOW = 10  # Must match training rolling(window=10)
 
         for param in ['voltage_avg', 'current_avg', 'frequency', 'active_power', 'reactive_power', 'power_factor']:
-            if len(self.history[param]) >= 10:
-                values = list(self.history[param])
-                features[f'{param}_mean'] = np.mean(values)
-                features[f'{param}_std'] = np.std(values)
-                features[f'{param}_min'] = np.min(values)
-                features[f'{param}_max'] = np.max(values)
-                features[f'{param}_trend'] = self._calculate_trend(values)
+            values = list(self.history[param])
+            n = len(values)
+
+            if n >= 1:
+                window_vals = values[-WINDOW:]
+                features[f'{param}_mean'] = np.mean(window_vals)
+                features[f'{param}_std'] = float(np.std(window_vals)) if len(window_vals) > 1 else 0.0
+                features[f'{param}_min'] = float(np.min(window_vals))
+                features[f'{param}_max'] = float(np.max(window_vals))
+
+                # Trend = change in 10-period MA (matches training rolling(10).mean().diff())
+                if n >= WINDOW + 1:
+                    current_ma = np.mean(values[-WINDOW:])
+                    prev_ma = np.mean(values[-WINDOW - 1:-1])
+                    features[f'{param}_trend'] = float(current_ma - prev_ma)
+                else:
+                    features[f'{param}_trend'] = 0.0
             else:
-                # Provide defaults when not enough history
-                features[f'{param}_mean'] = 0
-                features[f'{param}_std'] = 0
-                features[f'{param}_min'] = 0
-                features[f'{param}_max'] = 0
-                features[f'{param}_trend'] = 0
+                features[f'{param}_mean'] = 0.0
+                features[f'{param}_std'] = 0.0
+                features[f'{param}_min'] = 0.0
+                features[f'{param}_max'] = 0.0
+                features[f'{param}_trend'] = 0.0
 
         return features
 

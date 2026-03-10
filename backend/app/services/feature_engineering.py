@@ -226,7 +226,12 @@ class FeatureEngineer:
         power = data_point.active_power[0] if data_point.active_power else None
 
         if not all([voltage, current, power]):
-            return {'overall_balance_score': 100.0}
+            return {
+                'v_imbalance': 0.0,
+                'i_imbalance': 0.0,
+                'p_imbalance': 0.0,
+                'overall_balance_score': 100.0
+            }
 
         v_imb = self._calculate_imbalance(voltage.phaseA, voltage.phaseB, voltage.phaseC)
         i_imb = self._calculate_imbalance(current.phaseA, current.phaseB, current.phaseC)

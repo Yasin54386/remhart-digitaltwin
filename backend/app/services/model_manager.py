@@ -44,34 +44,27 @@ class ModelManager:
         """Load all trained models from disk"""
         logger.info("Loading ML models...")
 
-        # Define all model paths
+        # Define the 9 active trained model paths (pkl format via joblib)
         model_files = {
-            # Real-time Monitoring Models
+            # Real-time Monitoring Models (3 active)
             'voltage_anomaly': 'voltage_anomaly_detector.pkl',
             'harmonic_analyzer': 'harmonic_analyzer.pkl',
-            'frequency_stability': 'frequency_stability_predictor.pkl',
             'phase_imbalance': 'phase_imbalance_classifier.pkl',
 
-            # Predictive Maintenance Models
+            # Predictive Maintenance Models (4 active)
             'equipment_failure': 'equipment_failure_predictor.pkl',
             'overload_risk': 'overload_risk_classifier.pkl',
-            'power_quality': 'power_quality_index.pkl',
             'voltage_sag': 'voltage_sag_predictor.pkl',
 
-            # Energy Flow Models
-            'load_forecast': 'load_forecasting_lstm.pkl',
-            'energy_loss': 'energy_loss_estimator.pkl',
-            'power_flow': 'power_flow_optimizer.pkl',
+            # Energy Flow Models (1 active)
             'demand_response': 'demand_response_potential.pkl',
 
-            # Decision Making Models
-            'reactive_compensation': 'reactive_power_compensator.pkl',
-            'load_balancing': 'load_balancing_optimizer.pkl',
+            # Decision Making Models (2 active)
             'grid_stability': 'grid_stability_scorer.pkl',
             'optimal_dispatch': 'optimal_dispatch_advisor.pkl'
         }
 
-        # Try to load each model
+        # Try to load each pkl model
         for model_name, filename in model_files.items():
             model_path = self.models_dir / filename
 
@@ -86,7 +79,30 @@ class ModelManager:
                 logger.warning(f"✗ Model file not found: {filename}")
                 self.models[model_name] = None
 
-        logger.info(f"Models loaded: {sum(1 for m in self.models.values() if m is not None)}/{len(model_files)}")
+        # Load Keras model for power_quality_index (.h5 format)
+        self._load_keras_model('power_quality', 'power_quality_index.h5')
+
+        total = len(model_files) + 1  # +1 for power_quality
+        loaded = sum(1 for m in self.models.values() if m is not None)
+        logger.info(f"Models loaded: {loaded}/{total}")
+
+    def _load_keras_model(self, model_name: str, filename: str):
+        """Load a Keras .h5 model file"""
+        model_path = self.models_dir / filename
+        if not model_path.exists():
+            logger.warning(f"✗ Keras model file not found: {filename}")
+            self.models[model_name] = None
+            return
+        try:
+            import tensorflow as tf
+            self.models[model_name] = tf.keras.models.load_model(str(model_path))
+            logger.info(f"✓ Loaded Keras model {model_name}")
+        except ImportError:
+            logger.warning(f"✗ TensorFlow not available, cannot load {model_name} (.h5)")
+            self.models[model_name] = None
+        except Exception as e:
+            logger.warning(f"✗ Failed to load Keras model {model_name}: {e}")
+            self.models[model_name] = None
 
     # ==================== REAL-TIME MONITORING PREDICTIONS ====================
 

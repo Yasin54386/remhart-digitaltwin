@@ -21,14 +21,17 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import math
 
+from sqlalchemy.orm import joinedload
+
 from app.database import get_db
 from app.models.db_models import (
-    DateTimeTable, VoltageTable, CurrentTable, 
+    DateTimeTable, VoltageTable, CurrentTable,
     FrequencyTable, ActivePowerTable, ReactivePowerTable
 )
 from app.schemas.grid_data import GridDataPoint, GridDataResponse, GridStatus
 from app.utils.security import get_current_user, check_role
 from app.services.data_generator import grid_generator
+from app.services.ml_inference_engine import ml_inference_engine
 from app.routers.websocket_router import manager
 
 router = APIRouter()
@@ -71,19 +74,40 @@ async def add_grid_data(
             "reactive_power": data.reactive_power.dict()
         }
         
-        # Broadcast to all WebSocket clients immediately
+        # Broadcast raw grid data to all WebSocket clients
         await manager.broadcast({
             "type": "new_data",
             "data": broadcast_data
         })
-        
+
+        # Run ML inference on the new data point and broadcast predictions
+        try:
+            dt_for_ml = db.query(DateTimeTable).options(
+                joinedload(DateTimeTable.voltage),
+                joinedload(DateTimeTable.current),
+                joinedload(DateTimeTable.frequency),
+                joinedload(DateTimeTable.active_power),
+                joinedload(DateTimeTable.reactive_power)
+            ).filter(DateTimeTable.id == dt_entry.id).first()
+
+            if dt_for_ml:
+                ml_predictions = ml_inference_engine.process_data_point(dt_for_ml)
+                await manager.broadcast({
+                    "type": "ml_update",
+                    "data": ml_predictions,
+                    "timestamp": data.timestamp.isoformat()
+                })
+        except Exception as ml_err:
+            import logging
+            logging.getLogger(__name__).warning(f"ML inference failed after data insert: {ml_err}")
+
         return {
             "success": True,
-            "message": "Grid data added and broadcasted successfully",
+            "message": "Grid data added, broadcasted, and ML predictions generated",
             "data_id": dt_entry.id,
             "timestamp": dt_entry.timestamp
         }
-        
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error adding grid data: {str(e)}")

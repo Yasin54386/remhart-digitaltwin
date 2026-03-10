@@ -15,6 +15,8 @@ from ..services.ml_inference_engine import ml_inference_engine
 from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/monitoring", tags=["ML Monitoring"])
+# Active models: voltage_anomaly, harmonic_analysis, phase_imbalance
+# Removed: frequency_stability (model file missing - LSTM not trained)
 
 
 @router.get("/latest")
@@ -160,62 +162,6 @@ async def get_harmonic_analysis(
         "data": results
     }
 
-
-@router.get("/frequency-stability")
-async def get_frequency_stability(
-    is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get frequency stability prediction
-
-    Returns:
-        Current frequency and future predictions
-    """
-    # Get latest 100 data points for LSTM input
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    recent_points = query.order_by(desc(DateTimeTable.timestamp)).limit(100).all()
-
-    if not recent_points:
-        return {"error": "Insufficient data"}
-
-    # Get prediction for latest point
-    latest = recent_points[0]
-    predictions = ml_inference_engine.process_data_point(latest)
-    freq_stability = predictions['real_time_monitoring']['frequency_stability']
-
-    # Also get historical frequency
-    historical = []
-    for point in reversed(recent_points[-50:]):  # Last 50 points
-        freq = point.frequency[0].frequency_value if point.frequency else 50.0
-        historical.append({
-            'timestamp': point.timestamp,
-            'frequency': freq
-        })
-
-    return {
-        "algorithm": "LSTM (Long Short-Term Memory) Neural Network",
-        "training_dataset": "30 days of time-series data with daily and weekly load patterns",
-        "benefits": "Predicts frequency instability before it occurs, enables proactive generator dispatch adjustments",
-        "current": {
-            'frequency': freq_stability['current_frequency'],
-            'stability_score': freq_stability['stability_score'],
-            'trend': freq_stability['trend']
-        },
-        "predictions": freq_stability['predicted_frequencies'],
-        "historical": historical
-    }
 
 
 @router.get("/phase-imbalance")

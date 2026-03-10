@@ -73,21 +73,19 @@ class MLInferenceEngine:
         return flat
 
     def _run_monitoring_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run all Real-time Monitoring models"""
+        """Run active Real-time Monitoring models (3 of 4 - frequency stability removed)"""
         voltage_features = features['voltage']
-        frequency_features = features['frequency']
         quality_features = features['quality']
         balance_features = features['balance']
 
         return {
             'voltage_anomaly_detection': self.model_manager.predict_voltage_anomaly(voltage_features),
             'harmonic_analysis': self.model_manager.analyze_harmonics(quality_features),
-            'frequency_stability': self.model_manager.predict_frequency_stability(frequency_features),
             'phase_imbalance_classification': self.model_manager.classify_phase_imbalance(balance_features)
         }
 
     def _run_maintenance_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run all Predictive Maintenance models"""
+        """Run active Predictive Maintenance models (4 active)"""
         return {
             'equipment_failure_prediction': self.model_manager.predict_equipment_failure(flat),
             'overload_risk_classification': self.model_manager.classify_overload_risk(flat),
@@ -96,19 +94,14 @@ class MLInferenceEngine:
         }
 
     def _run_energy_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run all Energy Flow models"""
+        """Run active Energy Flow models (1 active - demand response)"""
         return {
-            'load_forecasting': self.model_manager.forecast_load(flat),
-            'energy_loss_estimation': self.model_manager.estimate_energy_loss(flat),
-            'power_flow_optimization': self.model_manager.optimize_power_flow(flat),
             'demand_response_assessment': self.model_manager.assess_demand_response(flat)
         }
 
     def _run_decision_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run all Decision Making models"""
+        """Run active Decision Making models (2 active - grid stability and optimal dispatch)"""
         return {
-            'reactive_power_compensation': self.model_manager.optimize_reactive_compensation(flat),
-            'load_balancing_optimization': self.model_manager.optimize_load_balancing(flat),
             'grid_stability_scoring': self.model_manager.score_grid_stability(flat),
             'optimal_dispatch_advisory': self.model_manager.advise_optimal_dispatch(flat)
         }

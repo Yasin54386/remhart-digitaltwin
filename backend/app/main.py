@@ -28,7 +28,7 @@ from app.utils.security import create_default_users
 
 # Import routers
 from app.routers import auth, grid_data, websocket_router, simulator, reports
-from app.routers import ml_monitoring, ml_maintenance, ml_energy, ml_decision
+from app.routers import ml_monitoring, ml_maintenance, ml_energy, ml_decision, webhook
 
 # ============================================
 # Application Lifecycle Management
@@ -176,6 +176,9 @@ app.include_router(ml_energy.router)
 
 # ML Decision routes
 app.include_router(ml_decision.router)
+
+# Webhook routes (external data input for real-time ML pipeline)
+app.include_router(webhook.router)
 
 
 # ============================================

@@ -227,7 +227,7 @@
         <h2 style="margin-bottom: 10px;">
             <i class="fas fa-brain"></i> Real-time Monitoring - AI/ML Powered
         </h2>
-        <p>Advanced real-time analytics using 4 AI/ML models. Automatically displays latest 200 data points.</p>
+        <p>Advanced real-time analytics using 3 trained AI/ML models. Updates automatically via WebSocket and polling.</p>
     </div>
 
     <!-- Row 1: Voltage Anomaly Detection + Harmonic Analysis -->
@@ -246,7 +246,7 @@
                 <span id="voltageStatus" class="risk-badge risk-low">Normal</span>
                 <div class="metric-box">
                     <strong>Anomaly Score:</strong> <span id="anomalyScore">0.0</span><br>
-                    <strong>Avg Voltage:</strong> <span id="avgVoltage">230V</span>
+                    <strong>Severity:</strong> <span id="anomalySeverity">Low</span>
                 </div>
             </div>
             <div class="chart-container">
@@ -277,28 +277,8 @@
         </div>
     </div>
 
-    <!-- Row 2: Frequency Stability Prediction + Phase Imbalance Classification -->
-    <div class="graphs-grid">
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-chart-line"></i> Frequency Stability Prediction
-                </div>
-                <button class="info-btn" onclick="openModal('frequencyModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Stability Score:</span>
-                <span id="stabilityScore">100</span>
-                <span style="margin-left: 15px;">Trend:</span>
-                <span id="frequencyTrend" class="risk-badge risk-low">Stable</span>
-            </div>
-            <div class="chart-container">
-                <canvas id="frequencyChart"></canvas>
-            </div>
-        </div>
-
+    <!-- Row 2: Phase Imbalance Classification (full width) -->
+    <div class="graphs-grid" style="grid-template-columns: 1fr;">
         <div class="ml-card">
             <div class="ml-card-header">
                 <div class="ml-card-title">
@@ -308,12 +288,16 @@
                     Info
                 </button>
             </div>
-            <div class="ml-card-status">
-                <span>Severity:</span>
-                <span id="imbalanceSeverity" class="risk-badge risk-low">Normal</span>
-                <div class="metric-box">
-                    <strong>Balance Score:</strong> <span id="balanceScore">100</span><br>
-                    <strong>Max Imbalance:</strong> <span id="maxImbalance">0%</span>
+            <div class="ml-card-status" style="display:flex; gap:30px; flex-wrap:wrap; align-items:center;">
+                <div>
+                    <span>Severity:</span>
+                    <span id="imbalanceSeverity" class="risk-badge risk-low">Normal</span>
+                </div>
+                <div class="metric-box" style="flex:1; min-width:240px;">
+                    <strong>Balance Score:</strong> <span id="balanceScore">100</span> &nbsp;|&nbsp;
+                    <strong>V:</strong> <span id="vImbalance">0%</span> &nbsp;|&nbsp;
+                    <strong>I:</strong> <span id="iImbalance">0%</span> &nbsp;|&nbsp;
+                    <strong>P:</strong> <span id="pImbalance">0%</span>
                 </div>
             </div>
             <div class="chart-container">
@@ -399,44 +383,6 @@
     </div>
 </div>
 
-<!-- Frequency Stability Prediction Info Modal -->
-<div class="modal" id="frequencyModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info">
-                <h5 class="modal-title"><i class="fas fa-chart-line"></i> Frequency Stability Prediction</h5>
-                <button class="close" onclick="closeModal('frequencyModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model predicts future frequency behavior by analyzing historical frequency trends, enabling operators to anticipate and prevent frequency excursions that could trigger protective relays or cause equipment damage.</p>
-
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>LSTM (Long Short-Term Memory) Neural Network</strong> with 2 layers [64, 32 units], using a 100-point sliding window to predict the next 10 time steps. Trained with dropout (0.2) for regularization.</p>
-
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>30 Days Time-Series Data:</strong> Hourly frequency measurements capturing daily and weekly patterns</li>
-                    <li><strong>Peak Load Periods:</strong> Morning (6-9h) and evening (17-22h) with higher frequency variability</li>
-                    <li><strong>Off-Peak Stability:</strong> Night hours (22h-6h) with minimal frequency deviation</li>
-                    <li><strong>Load Events:</strong> Large motor starts, generator trips causing ±0.1-0.5Hz deviations</li>
-                    <li><strong>Normal Range:</strong> 49.8-50.2Hz with occasional excursions to 49.5-50.5Hz limits</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Predictive Control:</strong> Anticipate frequency deviations 10 steps ahead for proactive response</li>
-                    <li><strong>Generator Dispatch:</strong> Optimize unit commitment and AGC setpoints based on predictions</li>
-                    <li><strong>Prevent Excursions:</strong> Avoid frequency trips beyond statutory limits (49.5-50.5Hz)</li>
-                    <li><strong>Load-Generation Balance:</strong> Maintain real-time balance preventing cascading failures</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Frequency is the real-time indicator of load-generation balance. LSTM networks excel at time-series prediction by maintaining memory of long-term dependencies in frequency patterns. The model captures daily load cycles, weekend/weekday differences, and transient disturbances. Validated against NERC frequency response standards, the predictions enable operators to maintain grid stability within ±0.2Hz during normal conditions and respond effectively to contingencies.</p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Phase Imbalance Classification Info Modal -->
 <div class="modal" id="imbalanceModal">
@@ -499,7 +445,8 @@
     // Use global API_URL from base.html
     const token = '{{ request.session.access_token }}';
     let isSimulation = false;
-    let voltageAnomalyChart, harmonicChart, frequencyChart, imbalanceChart;
+    let voltageAnomalyChart, harmonicChart, imbalanceChart;
+    let pollingInterval = null;
 
     // Initialize charts
     function initCharts() {
@@ -522,7 +469,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, max: 1, title: { display: true, text: 'Anomaly Score' } }
+                    y: { title: { display: true, text: 'Anomaly Score' } }
                 }
             }
         });
@@ -548,44 +495,12 @@
             }
         });
 
-        // Frequency Chart
-        const frequencyCtx = document.getElementById('frequencyChart').getContext('2d');
-        frequencyChart = new Chart(frequencyCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Historical Frequency',
-                    data: [],
-                    borderColor: '#2ecc71',
-                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }, {
-                    label: 'Predicted',
-                    data: [],
-                    borderColor: '#3498db',
-                    borderDash: [5, 5],
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { min: 49, max: 51, title: { display: true, text: 'Frequency (Hz)' } }
-                }
-            }
-        });
-
-        // Imbalance Chart
+        // Phase Imbalance Radar Chart
         const imbalanceCtx = document.getElementById('imbalanceChart').getContext('2d');
         imbalanceChart = new Chart(imbalanceCtx, {
             type: 'radar',
             data: {
-                labels: ['Voltage Imbalance', 'Current Imbalance', 'Power Imbalance'],
+                labels: ['Voltage Imbalance (%)', 'Current Imbalance (%)', 'Power Imbalance (%)'],
                 datasets: [{
                     label: 'Imbalance %',
                     data: [0, 0, 0],
@@ -597,21 +512,20 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    r: { beginAtZero: true, max: 20, title: { display: true, text: 'Percentage (%)' } }
+                    r: { beginAtZero: true, max: 20 }
                 }
             }
         });
     }
 
-    // Fetch and update all visualizations
+    // Fetch and update all visualizations via REST API
     async function updateVisualizations() {
         try {
             const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
             // Voltage Anomaly Detection
-            const voltageResp = await fetch(`${API_URL}/api/ml/monitoring/voltage-anomaly${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const voltageResp = await fetch(`${API_URL}/api/ml/monitoring/voltage-anomaly${params}`, { headers });
             const voltageData = await voltageResp.json();
 
             if (voltageData.data && voltageData.data.length > 0) {
@@ -622,12 +536,12 @@
 
                 const latest = limited[limited.length - 1];
                 document.getElementById('anomalyScore').textContent = latest.anomaly_score.toFixed(3);
-                document.getElementById('avgVoltage').textContent = latest.v_avg.toFixed(1) + 'V';
+                document.getElementById('anomalySeverity').textContent = latest.severity || 'Low';
 
                 const statusEl = document.getElementById('voltageStatus');
                 if (latest.is_anomaly) {
                     statusEl.className = latest.severity === 'High' ? 'risk-badge risk-high' : 'risk-badge risk-medium';
-                    statusEl.textContent = 'Anomaly: ' + latest.severity;
+                    statusEl.textContent = 'Anomaly: ' + (latest.severity || 'Detected');
                 } else {
                     statusEl.className = 'risk-badge risk-low';
                     statusEl.textContent = 'Normal';
@@ -635,9 +549,7 @@
             }
 
             // Harmonic Analysis
-            const harmonicResp = await fetch(`${API_URL}/api/ml/monitoring/harmonic-analysis${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const harmonicResp = await fetch(`${API_URL}/api/ml/monitoring/harmonic-analysis${params}`, { headers });
             const harmonicData = await harmonicResp.json();
 
             if (harmonicData.data && harmonicData.data.length > 0) {
@@ -651,10 +563,11 @@
                 document.getElementById('thdCategory').textContent = latest.thd_category;
 
                 const thdEl = document.getElementById('thdLevel');
-                if (latest.thd_category === 'High') {
+                const cat = (latest.thd_category || '').toString();
+                if (cat === 'High') {
                     thdEl.className = 'risk-badge risk-high';
                     thdEl.textContent = 'High';
-                } else if (latest.thd_category === 'Medium') {
+                } else if (cat === 'Medium') {
                     thdEl.className = 'risk-badge risk-medium';
                     thdEl.textContent = 'Medium';
                 } else {
@@ -663,42 +576,8 @@
                 }
             }
 
-            // Frequency Stability
-            const freqResp = await fetch(`${API_URL}/api/ml/monitoring/frequency-stability${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const freqData = await freqResp.json();
-
-            if (freqData.historical && freqData.historical.length > 0) {
-                const limited = freqData.historical.slice(-200);
-                const histLabels = limited.map(d => new Date(d.timestamp).toLocaleTimeString());
-                const histData = limited.map(d => d.frequency);
-
-                const predLabels = Array.from({length: 10}, (_, i) => `+${i+1}`);
-                const allLabels = [...histLabels, ...predLabels];
-
-                frequencyChart.data.labels = allLabels;
-                frequencyChart.data.datasets[0].data = [...histData, ...Array(10).fill(null)];
-                frequencyChart.data.datasets[1].data = [...Array(histData.length).fill(null), ...freqData.predictions];
-                frequencyChart.update();
-
-                document.getElementById('stabilityScore').textContent = freqData.current.stability_score.toFixed(1);
-
-                const trendEl = document.getElementById('frequencyTrend');
-                trendEl.textContent = freqData.current.trend;
-                if (freqData.current.trend === 'Stable') {
-                    trendEl.className = 'risk-badge risk-low';
-                } else if (freqData.current.trend === 'Rising' || freqData.current.trend === 'Falling') {
-                    trendEl.className = 'risk-badge risk-medium';
-                } else {
-                    trendEl.className = 'risk-badge risk-high';
-                }
-            }
-
             // Phase Imbalance
-            const imbalanceResp = await fetch(`${API_URL}/api/ml/monitoring/phase-imbalance${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const imbalanceResp = await fetch(`${API_URL}/api/ml/monitoring/phase-imbalance${params}`, { headers });
             const imbalanceData = await imbalanceResp.json();
 
             if (imbalanceData.data && imbalanceData.data.length > 0) {
@@ -712,11 +591,9 @@
                 imbalanceChart.update();
 
                 document.getElementById('balanceScore').textContent = latest.balance_score.toFixed(1);
-                document.getElementById('maxImbalance').textContent = Math.max(
-                    latest.voltage_imbalance,
-                    latest.current_imbalance,
-                    latest.power_imbalance
-                ).toFixed(1) + '%';
+                document.getElementById('vImbalance').textContent = latest.voltage_imbalance.toFixed(1) + '%';
+                document.getElementById('iImbalance').textContent = latest.current_imbalance.toFixed(1) + '%';
+                document.getElementById('pImbalance').textContent = latest.power_imbalance.toFixed(1) + '%';
 
                 const severityEl = document.getElementById('imbalanceSeverity');
                 severityEl.textContent = latest.severity;
@@ -730,11 +607,11 @@
             }
 
         } catch (error) {
-            console.error('Error fetching ML data:', error);
+            console.error('Error fetching ML monitoring data:', error);
         }
     }
 
-    // WebSocket connection for real-time ML predictions
+    // WebSocket connection for real-time ML predictions (connects to FastAPI port)
     let mlWebSocket = null;
     let reconnectTimeout = null;
 
@@ -743,26 +620,25 @@
             return;
         }
 
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/ml-predictions?is_simulation=${isSimulation}`;
+        // Derive WS URL from API_URL (FastAPI backend, not Django frontend)
+        const wsUrl = API_URL.replace('http://', 'ws://').replace('https://', 'wss://') +
+                      `/ws/ml-predictions?is_simulation=${isSimulation}`;
 
         console.log('Connecting to ML WebSocket:', wsUrl);
         mlWebSocket = new WebSocket(wsUrl);
 
         mlWebSocket.onopen = () => {
             console.log('ML WebSocket connected - Real-time predictions active');
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
+            if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
+            // Stop polling when WebSocket is active
+            if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
         };
 
         mlWebSocket.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-
                 if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
-                    updateMLCharts(message.data);
+                    updateChartsFromWS(message.data);
                 }
             } catch (error) {
                 console.error('Error processing WebSocket message:', error);
@@ -774,32 +650,33 @@
         };
 
         mlWebSocket.onclose = () => {
-            console.log('ML WebSocket disconnected - Will reconnect in 5s');
+            console.log('ML WebSocket disconnected - polling fallback active');
             mlWebSocket = null;
+            // Start polling fallback at 30s interval
+            if (!pollingInterval) {
+                pollingInterval = setInterval(updateVisualizations, 30000);
+            }
             reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
         };
     }
 
-    function updateMLCharts(predictions) {
-        if (!predictions || !predictions.real_time_monitoring) {
-            console.warn('No real-time monitoring data in WebSocket message');
-            return;
-        }
-
+    // Update charts from WebSocket ML predictions payload
+    function updateChartsFromWS(predictions) {
+        if (!predictions || !predictions.real_time_monitoring) return;
         const monitoring = predictions.real_time_monitoring;
 
         // Voltage Anomaly
         if (monitoring.voltage_anomaly_detection) {
             const anomaly = monitoring.voltage_anomaly_detection;
             document.getElementById('anomalyScore').textContent = anomaly.anomaly_score.toFixed(3);
-            document.getElementById('avgVoltage').textContent = anomaly.v_avg.toFixed(1) + 'V';
+            document.getElementById('anomalySeverity').textContent = anomaly.severity || 'Low';
 
             const statusEl = document.getElementById('voltageStatus');
             if (anomaly.is_anomaly) {
-                statusEl.className = 'status-badge status-anomaly';
-                statusEl.textContent = 'Anomaly Detected';
+                statusEl.className = anomaly.severity === 'High' ? 'risk-badge risk-high' : 'risk-badge risk-medium';
+                statusEl.textContent = 'Anomaly: ' + (anomaly.severity || 'Detected');
             } else {
-                statusEl.className = 'status-badge status-normal';
+                statusEl.className = 'risk-badge risk-low';
                 statusEl.textContent = 'Normal';
             }
         }
@@ -811,49 +688,39 @@
             document.getElementById('thdCategory').textContent = harmonic.thd_category;
 
             const thdEl = document.getElementById('thdLevel');
-            if (harmonic.thd_category === 'High' || harmonic.thd_category === 'Critical') {
-                thdEl.className = 'status-badge status-high';
-                thdEl.textContent = 'High';
-            } else if (harmonic.thd_category === 'Moderate') {
-                thdEl.className = 'status-badge status-medium';
-                thdEl.textContent = 'Moderate';
+            const cat = (harmonic.thd_category || '').toString();
+            if (cat === 'High') {
+                thdEl.className = 'risk-badge risk-high'; thdEl.textContent = 'High';
+            } else if (cat === 'Medium') {
+                thdEl.className = 'risk-badge risk-medium'; thdEl.textContent = 'Medium';
             } else {
-                thdEl.className = 'status-badge status-low';
-                thdEl.textContent = 'Low';
-            }
-        }
-
-        // Frequency Stability
-        if (monitoring.frequency_stability) {
-            const freq = monitoring.frequency_stability;
-            document.getElementById('stabilityScore').textContent = freq.stability_score.toFixed(1);
-
-            const trendEl = document.getElementById('frequencyTrend');
-            if (freq.deviation_from_nominal > 0.1) {
-                trendEl.className = 'status-badge status-high';
-                trendEl.textContent = 'Unstable';
-            } else {
-                trendEl.className = 'status-badge status-normal';
-                trendEl.textContent = 'Stable';
+                thdEl.className = 'risk-badge risk-low'; thdEl.textContent = 'Low';
             }
         }
 
         // Phase Imbalance
         if (monitoring.phase_imbalance_classification) {
             const imbalance = monitoring.phase_imbalance_classification;
-            document.getElementById('balanceScore').textContent = imbalance.balance_score.toFixed(1);
-            document.getElementById('maxImbalance').textContent = imbalance.max_imbalance_pct.toFixed(1) + '%';
+            document.getElementById('balanceScore').textContent = (imbalance.balance_score || 0).toFixed(1);
+            document.getElementById('vImbalance').textContent = (imbalance.voltage_imbalance || 0).toFixed(1) + '%';
+            document.getElementById('iImbalance').textContent = (imbalance.current_imbalance || 0).toFixed(1) + '%';
+            document.getElementById('pImbalance').textContent = (imbalance.power_imbalance || 0).toFixed(1) + '%';
+
+            imbalanceChart.data.datasets[0].data = [
+                imbalance.voltage_imbalance || 0,
+                imbalance.current_imbalance || 0,
+                imbalance.power_imbalance || 0
+            ];
+            imbalanceChart.update();
 
             const severityEl = document.getElementById('imbalanceSeverity');
-            if (imbalance.severity.toLowerCase() === 'high' || imbalance.severity.toLowerCase() === 'critical') {
-                severityEl.className = 'status-badge status-high';
-                severityEl.textContent = imbalance.severity;
-            } else if (imbalance.severity.toLowerCase() === 'medium') {
-                severityEl.className = 'status-badge status-medium';
-                severityEl.textContent = imbalance.severity;
+            severityEl.textContent = imbalance.severity;
+            if (imbalance.severity === 'Critical') {
+                severityEl.className = 'risk-badge risk-high';
+            } else if (imbalance.severity === 'Warning') {
+                severityEl.className = 'risk-badge risk-medium';
             } else {
-                severityEl.className = 'status-badge status-low';
-                severityEl.textContent = imbalance.severity;
+                severityEl.className = 'risk-badge risk-low';
             }
         }
     }
@@ -867,6 +734,8 @@
     document.addEventListener('simulatorModeChanged', (e) => {
         isSimulation = e.detail.isSimulatorMode;
         updateVisualizations();
+        // Reconnect WebSocket with new mode
+        if (mlWebSocket) { mlWebSocket.close(); }
     });
 
     // Initialize on page load
@@ -874,8 +743,14 @@
         initCharts();
         updateSimulatorMode();
         updateVisualizations();
+        connectMLWebSocket();
+    });
 
-        // Real-time updates via WebSocket (no polling needed) // TODO: Replace with WebSocket for real-time updates
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (mlWebSocket) mlWebSocket.close();
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        if (pollingInterval) clearInterval(pollingInterval);
     });
 </script>
 {% endblock %}

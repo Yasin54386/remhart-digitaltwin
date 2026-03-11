@@ -109,7 +109,7 @@ class ReactivePowerData(BaseModel):
 class GridDataPoint(BaseModel):
     """
     Complete grid data point - all measurements at one timestamp.
-    This is what SCADA would send every few seconds.
+    Sent by SCADA, IoT sensors, or the simulator script.
     """
     timestamp: datetime
     voltage: VoltageData
@@ -117,6 +117,7 @@ class GridDataPoint(BaseModel):
     frequency: FrequencyData
     active_power: ActivePowerData
     reactive_power: ReactivePowerData
+    is_simulation: bool = False
     
     class Config:
         json_schema_extra = {

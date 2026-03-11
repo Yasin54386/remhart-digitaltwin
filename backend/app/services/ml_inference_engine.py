@@ -1,162 +1,144 @@
 """
 ML Inference Engine
-Processes every new grid data point through all 16 ML models
+===================
+Runs all 9 trained models on a new data point and returns structured
+predictions organised by the 4 frontend dashboard pages.
+
+Page → Models
+─────────────────────────────────────────────────────────────────────
+realtime_monitoring   : voltage_anomaly, energy_anomaly
+predictive_maintenance: equipment_failure, overload_risk,
+                        epqi_score, voltage_sag
+energy_flow           : load_forecasting, health_index
+decision_making       : reactive_q + pf_forecast (combined)
 """
 
 import logging
-from typing import Dict, Any
-from .feature_engineering import FeatureEngineer
+from typing import Dict, Any, List, Optional
+
+from .feature_engineering import feature_extractor
 from .model_manager import model_manager
 
 logger = logging.getLogger(__name__)
 
 
 class MLInferenceEngine:
-    """
-    Main inference engine that coordinates feature extraction and model predictions.
-    Runs all ML models on every new data point for real-time insights.
-    """
 
-    def __init__(self):
-        """Initialize the inference engine with feature engineer and model manager"""
-        self.feature_engineer = FeatureEngineer(window_size=100)
-        self.model_manager = model_manager
-        logger.info("ML Inference Engine initialized")
-
-    def process_data_point(self, data_point) -> Dict[str, Any]:
+    def process(
+        self,
+        record,
+        history: Optional[List] = None,
+    ) -> Dict[str, Any]:
         """
-        Process a single data point through entire ML pipeline
+        Run all 9 models on *record*.
 
-        Args:
-            data_point: Database record (DateTimeTable with relationships)
+        Parameters
+        ----------
+        record  : DateTimeTable ORM object
+        history : recent records (oldest→newest) for lag features.
+                  Should include *record* as the last element.
+                  If None, lag features fall back to current values.
 
-        Returns:
-            Dictionary containing predictions from all 16 models organized by module
+        Returns
+        -------
+        {
+            "realtime_monitoring":    {...},
+            "predictive_maintenance": {...},
+            "energy_flow":            {...},
+            "decision_making":        {...},
+            "metadata":               {...},
+        }
         """
         try:
-            # Step 1: Extract features
-            features = self.feature_engineer.extract_all_features(data_point)
+            f = feature_extractor.extract(record, history)
 
-            # Flatten features for easier model access
-            flat_features = self._flatten_features(features)
-
-            # Step 2: Run all model predictions
-            predictions = {
-                'real_time_monitoring': self._run_monitoring_models(features, flat_features),
-                'predictive_maintenance': self._run_maintenance_models(features, flat_features),
-                'energy_flow': self._run_energy_models(features, flat_features),
-                'decision_making': self._run_decision_models(features, flat_features)
+            return {
+                "realtime_monitoring":    self._monitoring(f),
+                "predictive_maintenance": self._maintenance(f),
+                "energy_flow":            self._energy(f),
+                "decision_making":        self._decision(f),
+                "metadata": {
+                    "timestamp":    record.timestamp,
+                    "is_simulation": record.is_simulation,
+                    "data_quality": self._quality(record),
+                },
             }
-
-            # Step 3: Add metadata
-            predictions['metadata'] = {
-                'timestamp': data_point.timestamp,
-                'is_simulation': data_point.is_simulation,
-                'data_quality': self._assess_data_quality(data_point)
-            }
-
-            return predictions
 
         except Exception as e:
-            import traceback
-            error_trace = traceback.format_exc()
-            logger.error(f"Error processing data point: {e}\n{error_trace}")
-            return self._get_error_response(str(e))
+            logger.error(f"Inference error: {e}", exc_info=True)
+            return self._error_response(str(e))
 
-    def _flatten_features(self, features: Dict) -> Dict:
-        """Flatten nested feature dictionary for easier access"""
-        flat = {}
-        for category, feature_dict in features.items():
-            if isinstance(feature_dict, dict):
-                for key, value in feature_dict.items():
-                    flat[key] = value
-        return flat
+    # ------------------------------------------------------------------
+    # Page 1 — Real-time Monitoring
+    # ------------------------------------------------------------------
 
-    def _run_monitoring_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run active Real-time Monitoring models (3 of 4 - frequency stability removed)"""
-        voltage_features = features['voltage']
-        quality_features = features['quality']
-        balance_features = features['balance']
-
+    def _monitoring(self, f: Dict) -> Dict:
         return {
-            'voltage_anomaly_detection': self.model_manager.predict_voltage_anomaly(voltage_features),
-            'harmonic_analysis': self.model_manager.analyze_harmonics(quality_features),
-            'phase_imbalance_classification': self.model_manager.classify_phase_imbalance(balance_features)
+            "voltage_anomaly": model_manager.predict_voltage_anomaly(f),
+            "energy_anomaly":  model_manager.predict_energy_anomaly(f),
         }
 
-    def _run_maintenance_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run active Predictive Maintenance models (4 active)"""
+    # ------------------------------------------------------------------
+    # Page 2 — Predictive Maintenance
+    # ------------------------------------------------------------------
+
+    def _maintenance(self, f: Dict) -> Dict:
         return {
-            'equipment_failure_prediction': self.model_manager.predict_equipment_failure(flat),
-            'overload_risk_classification': self.model_manager.classify_overload_risk(flat),
-            'power_quality_index': self.model_manager.calculate_power_quality_index(flat),
-            'voltage_sag_prediction': self.model_manager.predict_voltage_sag(flat)
+            "equipment_failure": model_manager.predict_equipment_failure(f),
+            "overload_risk":     model_manager.predict_overload_risk(f),
+            "epqi_score":        model_manager.predict_epqi_score(f),
+            "voltage_sag":       model_manager.predict_voltage_sag(f),
         }
 
-    def _run_energy_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run active Energy Flow models (1 active - demand response)"""
+    # ------------------------------------------------------------------
+    # Page 3 — Energy Flow
+    # ------------------------------------------------------------------
+
+    def _energy(self, f: Dict) -> Dict:
         return {
-            'demand_response_assessment': self.model_manager.assess_demand_response(flat)
+            "load_forecasting": model_manager.predict_load_forecast(f),
+            "health_index":     model_manager.predict_health_index(f),
         }
 
-    def _run_decision_models(self, features: Dict, flat: Dict) -> Dict:
-        """Run active Decision Making models (2 active - grid stability and optimal dispatch)"""
+    # ------------------------------------------------------------------
+    # Page 4 — Decision Making
+    # ------------------------------------------------------------------
+
+    def _decision(self, f: Dict) -> Dict:
         return {
-            'grid_stability_scoring': self.model_manager.score_grid_stability(flat),
-            'optimal_dispatch_advisory': self.model_manager.advise_optimal_dispatch(flat)
+            "reactive_and_pf": model_manager.predict_reactive_and_pf(f),
         }
 
-    def _assess_data_quality(self, data_point) -> str:
-        """Assess quality of incoming data"""
-        # Check if essential data exists
-        has_voltage = bool(data_point.voltage)
-        has_current = bool(data_point.current)
-        has_frequency = bool(data_point.frequency)
-        has_power = bool(data_point.active_power)
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
-        complete_count = sum([has_voltage, has_current, has_frequency, has_power])
+    def _quality(self, record) -> str:
+        checks = [
+            bool(record.voltage),
+            bool(record.current),
+            bool(record.frequency),
+            bool(record.active_power),
+            bool(record.reactive_power),
+        ]
+        n = sum(checks)
+        return "Excellent" if n == 5 else "Good" if n == 4 else "Fair" if n >= 2 else "Poor"
 
-        if complete_count == 4:
-            return 'Excellent'
-        elif complete_count == 3:
-            return 'Good'
-        elif complete_count == 2:
-            return 'Fair'
-        return 'Poor'
-
-    def _get_error_response(self, error_msg: str) -> Dict:
-        """Return error response structure"""
+    def _error_response(self, msg: str) -> Dict:
         return {
-            'error': True,
-            'message': error_msg,
-            'real_time_monitoring': {},
-            'predictive_maintenance': {},
-            'energy_flow': {},
-            'decision_making': {},
-            'metadata': {
-                'timestamp': None,
-                'is_simulation': False,
-                'data_quality': 'Error'
-            }
+            "error": True,
+            "message": msg,
+            "realtime_monitoring":    {},
+            "predictive_maintenance": {},
+            "energy_flow":            {},
+            "decision_making":        {},
+            "metadata": {
+                "timestamp": None,
+                "is_simulation": False,
+                "data_quality": "Error",
+            },
         }
 
-    def get_historical_predictions(self, data_points: list) -> list:
-        """
-        Process multiple historical data points
 
-        Args:
-            data_points: List of database records
-
-        Returns:
-            List of prediction dictionaries
-        """
-        predictions = []
-        for data_point in data_points:
-            pred = self.process_data_point(data_point)
-            predictions.append(pred)
-
-        return predictions
-
-
-# Global singleton instance
+# Singleton
 ml_inference_engine = MLInferenceEngine()

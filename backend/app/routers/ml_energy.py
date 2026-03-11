@@ -1,6 +1,6 @@
 """
 Energy Flow ML API
-Provides AI-powered energy flow optimization insights
+Models: load_forecasting, health_index (energy imbalance & health)
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -15,118 +15,89 @@ from ..services.ml_inference_engine import ml_inference_engine
 from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/energy", tags=["ML Energy"])
-# Active model: demand_response_assessment (K-Means, trained)
-# Removed: load_forecasting (stub), energy_loss (stub), power_flow (rule-based dict)
+
+_OPTS = [
+    joinedload(DateTimeTable.voltage),
+    joinedload(DateTimeTable.current),
+    joinedload(DateTimeTable.frequency),
+    joinedload(DateTimeTable.active_power),
+    joinedload(DateTimeTable.reactive_power),
+]
+
+
+def _history(db, is_simulation, limit=1010):
+    q = db.query(DateTimeTable).options(*_OPTS)
+    if is_simulation is not None:
+        q = q.filter(DateTimeTable.is_simulation == is_simulation)
+    rows = q.order_by(desc(DateTimeTable.timestamp)).limit(limit).all()
+    rows.reverse()
+    return rows
+
+
+def _since_filter(history, hours):
+    if not hours:
+        return history
+    since = datetime.now() - timedelta(hours=hours)
+    return [r for r in history if r.timestamp >= since]
 
 
 @router.get("/latest")
-async def get_latest_energy_insights(
+async def latest(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """Get latest energy flow ML insights"""
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    latest = query.order_by(desc(DateTimeTable.timestamp)).first()
-
-    if not latest:
+    history = _history(db, is_simulation)
+    if not history:
         return {"error": "No data available"}
-
-    predictions = ml_inference_engine.process_data_point(latest)
-
+    record = history[-1]
+    preds = ml_inference_engine.process(record, history)
     return {
-        "timestamp": latest.timestamp,
-        "is_simulation": latest.is_simulation,
-        "insights": predictions['energy_flow'],
-        "metadata": predictions['metadata']
+        "timestamp": record.timestamp,
+        "is_simulation": record.is_simulation,
+        "insights": preds["energy_flow"],
+        "metadata": preds["metadata"],
     }
 
 
-
-@router.get("/demand-response")
-async def get_demand_response_potential(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+@router.get("/load-forecast")
+async def load_forecast(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get demand response potential assessment
-
-    Returns:
-        Load clustering and DR recommendations
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
+    history = _since_filter(_history(db, is_simulation), hours)
     results = []
-    total_points = len(data_points)
-    skipped_count = 0
-    error_count = 0
-
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-
-        # Track errors
-        if 'error' in predictions:
-            error_count += 1
-            continue
-
-        if not predictions.get('energy_flow'):
-            skipped_count += 1
-            continue
-
-        dr = predictions['energy_flow'].get('demand_response_assessment')
-        if not dr:
-            skipped_count += 1
-            continue
-
-        load = point.active_power[0].total if point.active_power else 0
-
-        results.append({
-            'timestamp': point.timestamp,
-            'load_kw': load,
-            'load_cluster': dr['load_cluster'],
-            'dr_potential_kw': dr['dr_potential_kw'],
-            'flexibility_score': dr['flexibility_score'],
-            'recommended_actions': dr['recommended_actions']
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        lf = preds["energy_flow"].get("load_forecasting", {})
+        results.append({"timestamp": record.timestamp, **lf})
 
     return {
-        "algorithm": "K-Means Clustering",
-        "training_dataset": "Load profiles clustered into 3 categories: low-load, medium-load, high-load",
-        "benefits": "Identifies opportunities for demand response programs, reduces peak demand charges",
+        "model": "XGBoost Regressor (load_forecasting_model.joblib)",
+        "features": "all raw + temporal (hour_sin/cos, dow_sin/cos, is_weekend, holiday) + lags (1h,24h,168h) + rolling stats (3h,6h,24h)",
         "data": results,
-        "diagnostics": {
-            "total_data_points": total_points,
-            "successful_predictions": len(results),
-            "errors": error_count,
-            "skipped": skipped_count,
-            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
-        }
+    }
+
+
+@router.get("/health-index")
+async def health_index(
+    hours: Optional[int] = Query(None),
+    is_simulation: Optional[bool] = Query(None),
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    history = _since_filter(_history(db, is_simulation), hours)
+    results = []
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        hi = preds["energy_flow"].get("health_index", {})
+        results.append({"timestamp": record.timestamp, **hi})
+
+    return {
+        "model": "XGBoost Regressor (energy_imbalance_and_health_index_model.joblib)",
+        "features": "volt_A/B/C, I_A/B/C, P_T, Q_T, FP_T, Frec",
+        "output": "health_score (0-100), energy_imbalance_kw, current_unbalance_pct, imbalance_loss_flag",
+        "data": results,
     }

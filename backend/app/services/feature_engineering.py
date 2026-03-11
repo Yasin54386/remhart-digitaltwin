@@ -1,391 +1,251 @@
 """
-Feature Engineering Module
-Extracts ML features from raw grid data for all models
+Feature Engineering
+===================
+Converts raw DB records into the exact feature dictionaries that each of
+the 9 trained models expects.
+
+All feature names match the training column names from master_data.xlsx:
+    volt_A, volt_B, volt_C
+    I_A, I_B, I_C
+    P_A, P_B, P_C, P_T
+    Q_A, Q_B, Q_C, Q_T
+    FP_A, FP_B, FP_C, FP_T   ← computed from P/Q (not stored in DB)
+    Frec
 """
 
-import numpy as np
-from typing import Dict, List, Any
-from collections import deque
 import math
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Any
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
-class FeatureEngineer:
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _safe(val, default=0.0) -> float:
+    """Return float or default if None / NaN."""
+    try:
+        v = float(val)
+        return v if math.isfinite(v) else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _compute_pf(p: float, q: float) -> float:
+    """Power factor from active and reactive power."""
+    apparent = math.sqrt(p ** 2 + q ** 2)
+    return p / apparent if apparent > 1e-9 else 1.0
+
+
+def _hour_sin_cos(hour: int):
+    angle = 2 * math.pi * hour / 24
+    return math.sin(angle), math.cos(angle)
+
+
+def _dow_sin_cos(dow: int):
+    angle = 2 * math.pi * dow / 7
+    return math.sin(angle), math.cos(angle)
+
+
+# ---------------------------------------------------------------------------
+# Feature Extractor
+# ---------------------------------------------------------------------------
+
+class FeatureExtractor:
     """
-    Extracts features from raw grid data for ML model inference.
-    Maintains sliding window history for time-series features.
+    Extracts a flat feature dictionary from a DateTimeTable ORM record.
+
+    The extractor also accepts an optional list of recent records so that
+    lag / rolling-window features can be computed for forecasting models.
     """
 
-    def __init__(self, window_size=100):
+    def extract(
+        self,
+        record,
+        history: Optional[List] = None,
+    ) -> Dict[str, Any]:
         """
-        Initialize feature engineer with history buffer
+        Parameters
+        ----------
+        record  : DateTimeTable ORM object (with .voltage, .current, etc.)
+        history : ordered list of recent DateTimeTable records
+                  (oldest first, includes *record* as last element).
+                  Required for lag features; if None, lags default to
+                  the current P_T / Q_T value.
 
-        Args:
-            window_size: Number of data points to keep in history
+        Returns
+        -------
+        Flat dict of all feature values needed by every model.
         """
-        self.window_size = window_size
 
-        # Sliding window history for time-series features
-        self.history = {
-            'voltage_avg': deque(maxlen=window_size),
-            'current_avg': deque(maxlen=window_size),
-            'frequency': deque(maxlen=window_size),
-            'active_power': deque(maxlen=window_size),
-            'reactive_power': deque(maxlen=window_size),
-            'power_factor': deque(maxlen=window_size)
-        }
+        # ── Raw measurements ────────────────────────────────────────────
+        v = record.voltage[0]   if record.voltage    else None
+        c = record.current[0]   if record.current    else None
+        f = record.frequency[0] if record.frequency  else None
+        p = record.active_power[0]   if record.active_power   else None
+        q = record.reactive_power[0] if record.reactive_power else None
 
-    def extract_all_features(self, data_point) -> Dict[str, Any]:
-        """
-        Extract all features needed for all ML models
+        volt_A = _safe(v.phaseA   if v else 0)
+        volt_B = _safe(v.phaseB   if v else 0)
+        volt_C = _safe(v.phaseC   if v else 0)
 
-        Args:
-            data_point: Database record (DateTimeTable with relationships)
+        I_A = _safe(c.phaseA if c else 0)
+        I_B = _safe(c.phaseB if c else 0)
+        I_C = _safe(c.phaseC if c else 0)
 
-        Returns:
-            Dictionary of features organized by category
-        """
-        # Update history first
-        self._update_history(data_point)
+        Frec = _safe(f.frequency_value if f else 50.0, 50.0)
 
-        # Extract features for different categories
-        features = {
-            'voltage': self._extract_voltage_features(data_point),
-            'current': self._extract_current_features(data_point),
-            'frequency': self._extract_frequency_features(data_point),
-            'power': self._extract_power_features(data_point),
-            'balance': self._extract_balance_features(data_point),
-            'quality': self._extract_quality_features(data_point),
-            'time_series': self._extract_time_series_features()
-        }
+        P_A = _safe(p.phaseA if p else 0)
+        P_B = _safe(p.phaseB if p else 0)
+        P_C = _safe(p.phaseC if p else 0)
+        P_T = _safe(p.total  if p else 0)
 
-        return features
+        Q_A = _safe(q.phaseA if q else 0)
+        Q_B = _safe(q.phaseB if q else 0)
+        Q_C = _safe(q.phaseC if q else 0)
+        Q_T = _safe(q.total  if q else 0)
 
-    def _update_history(self, data_point):
-        """Update sliding window history with new data point"""
-        # Extract values safely
-        v_avg = data_point.voltage[0].average if data_point.voltage else 230.0
-        i_avg = data_point.current[0].average if data_point.current else 0.0
-        f = data_point.frequency[0].frequency_value if data_point.frequency else 50.0
-        p = data_point.active_power[0].total if data_point.active_power else 0.0
-        q = data_point.reactive_power[0].total if data_point.reactive_power else 0.0
+        # ── Derived: Power Factor (not in DB — computed from P, Q) ─────
+        FP_A = _compute_pf(P_A, Q_A)
+        FP_B = _compute_pf(P_B, Q_B)
+        FP_C = _compute_pf(P_C, Q_C)
+        FP_T = _compute_pf(P_T, Q_T)
 
-        # Calculate power factor
-        s = math.sqrt(p**2 + q**2) if (p != 0 or q != 0) else 0.0001
-        pf = p / s if s > 0 else 0.0
+        # ── Temporal ────────────────────────────────────────────────────
+        ts: datetime = record.timestamp
+        hour_of_day = ts.hour
+        day_of_week = ts.weekday()          # 0=Mon … 6=Sun
+        day_of_month = ts.day
+        month = ts.month
+        is_weekend = 1 if day_of_week >= 5 else 0
+        is_workday  = 1 - is_weekend
+        is_public_holiday = 0               # simplified; override if needed
 
-        # Append to history
-        self.history['voltage_avg'].append(v_avg)
-        self.history['current_avg'].append(i_avg)
-        self.history['frequency'].append(f)
-        self.history['active_power'].append(p)
-        self.history['reactive_power'].append(q)
-        self.history['power_factor'].append(pf)
+        hour_sin, hour_cos = _hour_sin_cos(hour_of_day)
+        dow_sin,  dow_cos  = _dow_sin_cos(day_of_week)
 
-    def _extract_voltage_features(self, data_point) -> Dict:
-        """Extract voltage-related features"""
-        voltage = data_point.voltage[0] if data_point.voltage else None
+        # ── Voltage-anomaly extra features ──────────────────────────────
+        v_avg = (volt_A + volt_B + volt_C) / 3.0
+        v_stability_delta = 0.0
+        v_avg_roll_mean   = v_avg
+        v_avg_roll_std    = 0.0
 
-        if not voltage:
-            return self._default_voltage_features()
+        if history and len(history) >= 2:
+            prev = history[-2]
+            pv = prev.voltage[0] if prev.voltage else None
+            if pv:
+                prev_v_avg = (pv.phaseA + pv.phaseB + pv.phaseC) / 3.0
+                v_stability_delta = abs(v_avg - prev_v_avg)
 
-        v_avg = voltage.average
-        v_a = voltage.phaseA
-        v_b = voltage.phaseB
-        v_c = voltage.phaseC
+            # rolling mean/std over up to 18 points (~3 h at 10-min intervals)
+            window = history[-18:]
+            v_avgs = []
+            for r in window:
+                rv = r.voltage[0] if r.voltage else None
+                if rv:
+                    v_avgs.append((rv.phaseA + rv.phaseB + rv.phaseC) / 3.0)
+            if v_avgs:
+                v_avg_roll_mean = float(np.mean(v_avgs))
+                v_avg_roll_std  = float(np.std(v_avgs))
 
-        # Cross-phase variance (matches training: df[['v_a','v_b','v_c']].var(axis=1))
-        v_variance = np.var([v_a, v_b, v_c])
+        # ── Lag features for forecasting models ─────────────────────────
+        # Data sampled every 10 min → 1h = 6 steps, 24h = 144, 168h = 1008
 
-        # Calculate imbalance
-        v_imbalance = self._calculate_imbalance(v_a, v_b, v_c)
+        def _lag_P_T(steps: int) -> float:
+            if history and len(history) > steps:
+                r = history[-(steps + 1)]
+                pp = r.active_power[0] if r.active_power else None
+                return _safe(pp.total if pp else P_T, P_T)
+            return P_T
 
-        # Deviation from nominal
-        v_deviation = abs(v_avg - 230) / 230
+        def _lag_Q_T(steps: int) -> float:
+            if history and len(history) > steps:
+                r = history[-(steps + 1)]
+                rq = r.reactive_power[0] if r.reactive_power else None
+                return _safe(rq.total if rq else Q_T, Q_T)
+            return Q_T
 
-        # Rate of change
-        v_roc = self._calculate_roc('voltage_avg')
+        def _lag_FP_T(steps: int) -> float:
+            if history and len(history) > steps:
+                r = history[-(steps + 1)]
+                rp = r.active_power[0] if r.active_power else None
+                rq = r.reactive_power[0] if r.reactive_power else None
+                lp = _safe(rp.total if rp else P_T, P_T)
+                lq = _safe(rq.total if rq else Q_T, Q_T)
+                return _compute_pf(lp, lq)
+            return FP_T
+
+        load_lag_1h   = _lag_P_T(6)
+        load_lag_24h  = _lag_P_T(144)
+        load_lag_168h = _lag_P_T(1008)
+        Q_lag_1h  = _lag_Q_T(6)
+        Q_lag_24h = _lag_Q_T(144)
+        PF_lag_1h = _lag_FP_T(6)
+
+        # Rolling stats for load forecasting
+        def _roll_P_T(window_steps: int):
+            vals = []
+            if history:
+                for r in history[-window_steps:]:
+                    rp = r.active_power[0] if r.active_power else None
+                    if rp:
+                        vals.append(_safe(rp.total))
+            return vals if vals else [P_T]
+
+        w3h  = _roll_P_T(18)    # 3h window
+        w6h  = _roll_P_T(36)    # 6h window
+        w24h = _roll_P_T(144)   # 24h window
 
         return {
-            'v_avg': v_avg,
-            'v_phase_a': v_a,
-            'v_phase_b': v_b,
-            'v_phase_c': v_c,
-            'v_variance': v_variance,
-            'v_imbalance_pct': v_imbalance,
-            'v_deviation_pct': v_deviation * 100,
-            'v_rate_of_change': v_roc,
-            'v_max_phase': max(v_a, v_b, v_c),
-            'v_min_phase': min(v_a, v_b, v_c),
-            'v_range': max(v_a, v_b, v_c) - min(v_a, v_b, v_c)
+            # ── Raw ─────────────────────────────────────────────────────
+            "volt_A": volt_A, "volt_B": volt_B, "volt_C": volt_C,
+            "I_A": I_A, "I_B": I_B, "I_C": I_C,
+            "P_A": P_A, "P_B": P_B, "P_C": P_C, "P_T": P_T,
+            "Q_A": Q_A, "Q_B": Q_B, "Q_C": Q_C, "Q_T": Q_T,
+            "FP_A": FP_A, "FP_B": FP_B, "FP_C": FP_C, "FP_T": FP_T,
+            "Frec": Frec,
+
+            # ── Temporal ────────────────────────────────────────────────
+            "hour": hour_of_day,
+            "hour_of_day": hour_of_day,
+            "day_of_week": day_of_week,
+            "day_of_month": day_of_month,
+            "month": month,
+            "is_weekend": is_weekend,
+            "is_workday": is_workday,
+            "is_public_holiday": is_public_holiday,
+            "hour_sin": hour_sin, "hour_cos": hour_cos,
+            "dayofweek_sin": dow_sin, "dayofweek_cos": dow_cos,
+
+            # ── Voltage-anomaly extras ───────────────────────────────────
+            "v_stability_delta": v_stability_delta,
+            "v_avg_roll_mean":   v_avg_roll_mean,
+            "v_avg_roll_std":    v_avg_roll_std,
+
+            # ── Load-forecasting lags / rolling ─────────────────────────
+            "load_lag_1h":   load_lag_1h,
+            "load_lag_24h":  load_lag_24h,
+            "load_lag_168h": load_lag_168h,
+            "load_roll_mean_3h":  float(np.mean(w3h)),
+            "load_roll_mean_6h":  float(np.mean(w6h)),
+            "load_roll_mean_24h": float(np.mean(w24h)),
+            "load_roll_std_3h":   float(np.std(w3h)),
+            "load_roll_std_6h":   float(np.std(w6h)),
+            "load_roll_std_24h":  float(np.std(w24h)),
+            "load_roll_min_24h":  float(np.min(w24h)),
+            "load_roll_max_24h":  float(np.max(w24h)),
+
+            # ── Reactive-forecast lags ───────────────────────────────────
+            "Q_lag_1h":  Q_lag_1h,
+            "Q_lag_24h": Q_lag_24h,
+            "PF_lag_1h": PF_lag_1h,
         }
 
-    def _extract_current_features(self, data_point) -> Dict:
-        """Extract current-related features"""
-        current = data_point.current[0] if data_point.current else None
 
-        if not current:
-            return self._default_current_features()
-
-        i_avg = current.average
-        i_a = current.phaseA
-        i_b = current.phaseB
-        i_c = current.phaseC
-
-        # Cross-phase variance (matches training: df[['i_a','i_b','i_c']].var(axis=1))
-        i_variance = np.var([i_a, i_b, i_c])
-
-        # Calculate imbalance
-        i_imbalance = self._calculate_imbalance(i_a, i_b, i_c)
-
-        # Rate of change
-        i_roc = self._calculate_roc('current_avg')
-
-        # Detect spikes (current > 2x average in history)
-        avg_historical = np.mean(list(self.history['current_avg'])) if len(self.history['current_avg']) > 10 else i_avg
-        i_spike = 1 if i_avg > 2 * avg_historical else 0
-
-        return {
-            'i_avg': i_avg,
-            'i_phase_a': i_a,
-            'i_phase_b': i_b,
-            'i_phase_c': i_c,
-            'i_variance': i_variance,
-            'i_imbalance_pct': i_imbalance,
-            'i_rate_of_change': i_roc,
-            'i_spike_detected': i_spike,
-            'i_max_phase': max(i_a, i_b, i_c),
-            'i_min_phase': min(i_a, i_b, i_c),
-            'i_range': max(i_a, i_b, i_c) - min(i_a, i_b, i_c)
-        }
-
-    def _extract_frequency_features(self, data_point) -> Dict:
-        """Extract frequency-related features"""
-        frequency = data_point.frequency[0] if data_point.frequency else None
-
-        if not frequency:
-            return {'f_value': 50.0, 'f_deviation': 0.0, 'f_roc': 0.0, 'f_history': [50.0] * 10}
-
-        f = frequency.frequency_value
-        f_deviation = abs(f - 50.0)
-        f_roc = self._calculate_roc('frequency')
-
-        # Get recent history for LSTM
-        f_history = list(self.history['frequency'])[-100:] if len(self.history['frequency']) > 0 else [50.0]
-
-        return {
-            'f_value': f,
-            'f_deviation': f_deviation,
-            'f_rate_of_change': f_roc,
-            'f_history': f_history,
-            'f_above_nominal': 1 if f > 50.0 else 0,
-            'f_below_nominal': 1 if f < 50.0 else 0
-        }
-
-    def _extract_power_features(self, data_point) -> Dict:
-        """Extract power-related features"""
-        active = data_point.active_power[0] if data_point.active_power else None
-        reactive = data_point.reactive_power[0] if data_point.reactive_power else None
-
-        if not active or not reactive:
-            return self._default_power_features()
-
-        p_total = active.total
-        q_total = reactive.total
-
-        # Calculate apparent power
-        s_total = math.sqrt(p_total**2 + q_total**2) if (p_total != 0 or q_total != 0) else 0.0001
-
-        # Power factor
-        pf = p_total / s_total if s_total > 0 else 0.0
-
-        # Power imbalance
-        p_imbalance = self._calculate_imbalance(active.phaseA, active.phaseB, active.phaseC)
-        q_imbalance = self._calculate_imbalance(reactive.phaseA, reactive.phaseB, reactive.phaseC)
-
-        return {
-            'p_total': p_total,
-            'q_total': q_total,
-            's_total': s_total,
-            'power_factor': pf,
-            'p_phase_a': active.phaseA,
-            'p_phase_b': active.phaseB,
-            'p_phase_c': active.phaseC,
-            'q_phase_a': reactive.phaseA,
-            'q_phase_b': reactive.phaseB,
-            'q_phase_c': reactive.phaseC,
-            'p_imbalance_pct': p_imbalance,
-            'q_imbalance_pct': q_imbalance,
-            'pf_lagging': 1 if q_total > 0 else 0,
-            'pf_leading': 1 if q_total < 0 else 0
-        }
-
-    def _extract_balance_features(self, data_point) -> Dict:
-        """Extract 3-phase balance features"""
-        voltage = data_point.voltage[0] if data_point.voltage else None
-        current = data_point.current[0] if data_point.current else None
-        power = data_point.active_power[0] if data_point.active_power else None
-
-        if not all([voltage, current, power]):
-            return {
-                'v_imbalance': 0.0,
-                'i_imbalance': 0.0,
-                'p_imbalance': 0.0,
-                'overall_balance_score': 100.0
-            }
-
-        v_imb = self._calculate_imbalance(voltage.phaseA, voltage.phaseB, voltage.phaseC)
-        i_imb = self._calculate_imbalance(current.phaseA, current.phaseB, current.phaseC)
-        p_imb = self._calculate_imbalance(power.phaseA, power.phaseB, power.phaseC)
-
-        # Overall balance score (0-100, higher is better)
-        # Matches training: 100 - ((v_imb + i_imb + p_imb) / 3).clip(0, 100)
-        balance_score = max(0, 100 - (v_imb + i_imb + p_imb) / 3)
-
-        return {
-            'v_imbalance': v_imb,
-            'i_imbalance': i_imb,
-            'p_imbalance': p_imb,
-            'overall_balance_score': balance_score
-        }
-
-    def _extract_quality_features(self, data_point) -> Dict:
-        """Extract power quality features"""
-        v_features = self._extract_voltage_features(data_point)
-        f_features = self._extract_frequency_features(data_point)
-        p_features = self._extract_power_features(data_point)
-
-        # Estimate THD from cross-phase variance (matches training: v_variance / 10)
-        v_thd_est = min(v_features.get('v_variance', 0) / 10, 20.0)  # Cap at 20%
-
-        # Power Quality Index components
-        # v_quality: matches training: 100 - v_deviation (v_deviation already in %)
-        v_quality = max(0, 100 - v_features.get('v_deviation_pct', 0))
-        # f_quality: matches training: 100 - (f_deviation * 100).clip(0, 100)
-        f_quality = max(0, 100 - f_features.get('f_deviation', 0) * 100)
-        pf_quality = p_features.get('power_factor', 0.9) * 100
-
-        # Overall PQI
-        pqi = (v_quality * 0.4 + f_quality * 0.3 + pf_quality * 0.3)
-
-        return {
-            'v_thd_estimated': v_thd_est,
-            'v_variance': v_features.get('v_variance', 0),  # Add for harmonic analyzer
-            'power_factor': p_features.get('power_factor', 0.9),  # Add for harmonic analyzer
-            'v_quality_score': v_quality,
-            'f_quality_score': f_quality,
-            'pf_quality_score': pf_quality,
-            'power_quality_index': pqi
-        }
-
-    def _extract_time_series_features(self) -> Dict:
-        """
-        Extract time-series statistical features using a 10-point rolling window.
-        Matches training: df[param].rolling(window=10, min_periods=1).mean/std/etc.
-        Trend matches training: rolling(10).mean().diff() = change in 10-period MA.
-        """
-        features = {}
-        WINDOW = 10  # Must match training rolling(window=10)
-
-        for param in ['voltage_avg', 'current_avg', 'frequency', 'active_power', 'reactive_power', 'power_factor']:
-            values = list(self.history[param])
-            n = len(values)
-
-            if n >= 1:
-                window_vals = values[-WINDOW:]
-                features[f'{param}_mean'] = np.mean(window_vals)
-                features[f'{param}_std'] = float(np.std(window_vals)) if len(window_vals) > 1 else 0.0
-                features[f'{param}_min'] = float(np.min(window_vals))
-                features[f'{param}_max'] = float(np.max(window_vals))
-
-                # Trend = change in 10-period MA (matches training rolling(10).mean().diff())
-                if n >= WINDOW + 1:
-                    current_ma = np.mean(values[-WINDOW:])
-                    prev_ma = np.mean(values[-WINDOW - 1:-1])
-                    features[f'{param}_trend'] = float(current_ma - prev_ma)
-                else:
-                    features[f'{param}_trend'] = 0.0
-            else:
-                features[f'{param}_mean'] = 0.0
-                features[f'{param}_std'] = 0.0
-                features[f'{param}_min'] = 0.0
-                features[f'{param}_max'] = 0.0
-                features[f'{param}_trend'] = 0.0
-
-        return features
-
-    def _calculate_imbalance(self, a: float, b: float, c: float) -> float:
-        """
-        Calculate 3-phase imbalance percentage
-
-        Args:
-            a, b, c: Phase values
-
-        Returns:
-            Imbalance percentage
-        """
-        avg = (a + b + c) / 3
-        if avg == 0:
-            return 0.0
-
-        max_dev = max(abs(a - avg), abs(b - avg), abs(c - avg))
-        return (max_dev / avg) * 100
-
-    def _calculate_roc(self, param: str) -> float:
-        """
-        Calculate rate of change for a parameter
-
-        Args:
-            param: Parameter name in history
-
-        Returns:
-            Rate of change
-        """
-        if len(self.history[param]) < 2:
-            return 0.0
-
-        values = list(self.history[param])
-        return values[-1] - values[-2]
-
-    def _calculate_trend(self, values: List[float]) -> float:
-        """
-        Calculate trend (linear regression slope)
-
-        Args:
-            values: List of values
-
-        Returns:
-            Trend slope
-        """
-        if len(values) < 2:
-            return 0.0
-
-        x = np.arange(len(values))
-        y = np.array(values)
-
-        # Linear regression
-        slope = np.polyfit(x, y, 1)[0]
-        return slope
-
-    # Default feature dictionaries for missing data
-    def _default_voltage_features(self) -> Dict:
-        return {
-            'v_avg': 230.0, 'v_phase_a': 230.0, 'v_phase_b': 230.0, 'v_phase_c': 230.0,
-            'v_variance': 0.0, 'v_imbalance_pct': 0.0, 'v_deviation_pct': 0.0,
-            'v_rate_of_change': 0.0, 'v_max_phase': 230.0, 'v_min_phase': 230.0, 'v_range': 0.0
-        }
-
-    def _default_current_features(self) -> Dict:
-        return {
-            'i_avg': 0.0, 'i_phase_a': 0.0, 'i_phase_b': 0.0, 'i_phase_c': 0.0,
-            'i_variance': 0.0, 'i_imbalance_pct': 0.0, 'i_rate_of_change': 0.0,
-            'i_spike_detected': 0, 'i_max_phase': 0.0, 'i_min_phase': 0.0, 'i_range': 0.0
-        }
-
-    def _default_power_features(self) -> Dict:
-        return {
-            'p_total': 0.0, 'q_total': 0.0, 's_total': 0.0, 'power_factor': 0.9,
-            'p_phase_a': 0.0, 'p_phase_b': 0.0, 'p_phase_c': 0.0,
-            'q_phase_a': 0.0, 'q_phase_b': 0.0, 'q_phase_c': 0.0,
-            'p_imbalance_pct': 0.0, 'q_imbalance_pct': 0.0,
-            'pf_lagging': 0, 'pf_leading': 0
-        }
+# Singleton
+feature_extractor = FeatureExtractor()

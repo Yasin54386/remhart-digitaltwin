@@ -1,385 +1,83 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Decision Making - AI/ML Powered{% endblock %}
+{% block title %}Decision Making{% endblock %}
 
 {% block extra_css %}
 <style>
-    .ml-card {
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(10px);
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        padding: 25px;
-        margin-bottom: 25px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        display: flex;
-        flex-direction: column;
-        min-height: 550px;
-    }
-
-    .ml-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #9b59b6;
-        padding-bottom: 10px;
-        flex-shrink: 0;
-    }
-
-    .ml-card-title {
-        font-size: 18px;
-        font-weight: bold;
-        color: white;
-        flex-grow: 1;
-    }
-
-    .ml-card-content {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-    }
-
-    .ml-card-status {
-        flex-shrink: 0;
-        min-height: 120px;
-        margin-bottom: 15px;
-        color: white;
-    }
-
-    .info-btn {
-        background: #3498db;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: bold;
-        padding: 8px 16px;
-        border-radius: 5px;
-        transition: all 0.3s;
-        color: white;
-    }
-
-    .info-btn:hover {
-        background: #2980b9;
-        transform: scale(1.05);
-    }
-
-    .chart-container {
-        position: relative;
-        height: 300px;
-        margin-top: auto;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        flex-shrink: 0;
-    }
-
-    .metric-box {
-        background: rgba(255, 255, 255, 0.95);
-        color: #333;
-        padding: 12px 15px;
-        border-radius: 8px;
-        margin-top: 10px;
-        font-size: 14px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }
-
-    .metric-box strong {
-        color: #1a8c99;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .status-optimal { background: #2ecc71; color: white; }
-    .status-good { background: #f39c12; color: white; }
-    .status-suboptimal { background: #e74c3c; color: white; }
-
-    /* Grid layout for 2 columns */
-    .graphs-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 25px;
-        margin-bottom: 30px;
-    }
-
-    @media (max-width: 968px) {
-        .graphs-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Modal styles */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-        overflow-y: auto;
-    }
-
-    .modal.show {
-        display: block;
-    }
-
-    .modal-dialog {
-        max-width: 800px;
-        margin: 50px auto;
-        padding: 20px;
-    }
-
-    .modal-content {
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-
-    .modal-header {
-        padding: 20px;
-        border-bottom: 1px solid #dee2e6;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header.bg-purple {
-        background: #9b59b6;
-        color: white;
-    }
-
-    .modal-header.bg-success {
-        background: #2ecc71;
-        color: white;
-    }
-
-    .modal-header.bg-info {
-        background: #3498db;
-        color: white;
-    }
-
-    .modal-title {
-        margin: 0;
-        font-size: 20px;
-    }
-
-    .close {
-        background: none;
-        border: none;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        color: inherit;
-        line-height: 1;
-        padding: 0;
-    }
-
-    .close:hover {
-        opacity: 0.7;
-    }
-
-    .modal-body {
-        padding: 20px;
-    }
-
-    .modal-body h5 {
-        color: #9b59b6;
-        margin-top: 20px;
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-
-    .modal-body h5:first-child {
-        margin-top: 0;
-    }
-
-    .modal-body p {
-        line-height: 1.6;
-        margin-bottom: 15px;
-    }
-
-    .modal-body ul {
-        margin-left: 20px;
-        margin-bottom: 15px;
-    }
-
-    .modal-body ul li {
-        margin-bottom: 8px;
-    }
-
-    .recommendation-list {
-        background: rgba(255, 255, 255, 0.95);
-        color: #333;
-        padding: 12px 15px;
-        border-left: 3px solid #f39c12;
-        margin-top: 10px;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }
-
-    .recommendation-list strong {
-        color: #1a8c99;
-    }
-
-    .recommendation-list li {
-        margin-bottom: 5px;
-        color: #333;
-    }
-
-    .page-header {
-        color: white;
-    }
-
-    .page-header p {
-        color: rgba(255, 255, 255, 0.85);
-    }
+.ml-card {
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 22px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+}
+.ml-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 2px solid #9b59b6;
+    padding-bottom: 10px; margin-bottom: 14px;
+}
+.ml-card-title { font-size: 17px; font-weight: bold; color: #fff; }
+.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #fff; }
+.badge-good    { background: #27ae60; }
+.badge-warning { background: #f39c12; }
+.badge-poor    { background: #e74c3c; }
+.metric-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.metric-box { background: rgba(255,255,255,0.92); color: #333; border-radius: 8px; padding: 9px 12px; font-size: 13px; min-width: 130px; }
+.metric-box strong { color: #7d3c98; display: block; font-size: 11px; }
+.chart-wrap { flex: 1; background: rgba(255,255,255,0.93); border-radius: 8px; padding: 10px; position: relative; min-height: 240px; }
+.status-bar { background: rgba(155,89,182,0.12); border: 1px solid rgba(155,89,182,0.3); border-radius: 6px; padding: 8px 14px; color: #ddc; font-size: 13px; margin-bottom: 10px; }
+.page-header { color: #fff; margin-bottom: 18px; }
+.page-header p { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 4px; }
+.model-info { color: rgba(255,255,255,0.45); font-size: 11px; margin-top: 8px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="page-header" style="margin-bottom: 30px;">
-        <h2 style="margin-bottom: 10px;">
-            <i class="fas fa-brain"></i> Decision Making - AI/ML Powered
-        </h2>
-        <p>Intelligent decision support using 2 trained AI/ML models. Automatically displays latest 200 data points.</p>
+<div class="container-fluid py-4 px-4">
+    <div class="page-header">
+        <h2>Decision Making &amp; Reactive Control</h2>
+        <p>2 ML models (joint endpoint) • Reactive Power Forecast · Power Factor Forecast</p>
     </div>
 
-    <!-- Row 1: Grid Stability Scoring + Optimal Dispatch -->
-    <div class="graphs-grid">
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-heartbeat"></i> Grid Stability Scoring
+    <div class="status-bar" id="wsStatus">WebSocket: connecting…</div>
+
+    <div class="row">
+        <!-- Reactive Power Forecast -->
+        <div class="col-12 col-xl-6">
+            <div class="ml-card">
+                <div class="ml-card-header">
+                    <span class="ml-card-title">Reactive Power Forecast (Q)</span>
+                    <span class="badge badge-good" id="qStatus">—</span>
                 </div>
-                <button class="info-btn" onclick="openModal('stabilityInfoModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Status:</span>
-                <span id="stabilityStatus" class="status-badge status-optimal">Stable</span>
-                <span style="margin-left: 15px;">Score:</span>
-                <span id="stabilityScore">100</span>
-                <div class="recommendation-list" id="recommendations" style="display:none;">
-                    <strong>Recommendations:</strong>
-                    <ul id="recList"></ul>
+                <div class="metric-row">
+                    <div class="metric-box"><strong>Current Q (kVAR)</strong><span id="qCurrent">—</span></div>
+                    <div class="metric-box"><strong>Forecast Next (kVAR)</strong><span id="qForecast">—</span></div>
+                    <div class="metric-box"><strong>Compensation (kVAR)</strong><span id="qComp">—</span></div>
                 </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="stabilityChart"></canvas>
+                <div class="chart-wrap"><canvas id="qChart"></canvas></div>
+                <p class="model-info">reactive_q_forecast_model.joblib | XGBoost Regressor | 16 features incl. Q_lag_1h/24h, PF_lag_1h</p>
             </div>
         </div>
 
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-clipboard-list"></i> Optimal Dispatch Advisory
+        <!-- Power Factor Forecast -->
+        <div class="col-12 col-xl-6">
+            <div class="ml-card">
+                <div class="ml-card-header">
+                    <span class="ml-card-title">Power Factor Forecast (PF)</span>
+                    <span class="badge badge-good" id="pfStatus">—</span>
                 </div>
-                <button class="info-btn" onclick="openModal('dispatchInfoModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Reserve Margin:</span>
-                <span id="reserveStatus" class="status-badge status-optimal">Adequate</span>
-                <div class="metric-box">
-                    <strong>Current Load:</strong> <span id="dispatchLoad">0 kW</span><br>
-                    <strong>Recommended Generation:</strong> <span id="recGen">0 kW</span>
+                <div class="metric-row">
+                    <div class="metric-box"><strong>Current PF</strong><span id="pfCurrent">—</span></div>
+                    <div class="metric-box"><strong>Forecast Next PF</strong><span id="pfForecast">—</span></div>
+                    <div class="metric-box"><strong>PF Status</strong><span id="pfStatusTxt">—</span></div>
                 </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="dispatchChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Grid Stability Info Modal -->
-<div class="modal" id="stabilityInfoModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info">
-                <h5 class="modal-title"><i class="fas fa-heartbeat"></i> Grid Stability Scoring</h5>
-                <button class="close" onclick="closeModal('stabilityInfoModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model computes a comprehensive grid stability score (0-1) by analyzing voltage stability, frequency stability, power factor quality, and phase balance. It identifies specific stability issues and provides prioritized recommendations for corrective actions.</p>
-
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>Ensemble Model (Random Forest + Rule-Based Expert System)</strong> combining machine learning with domain expertise. Trained on 5,000+ grid operating scenarios from stable to critical conditions.</p>
-
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>Voltage Stability (25%):</strong> Normal operation 220-240V, deviations penalized</li>
-                    <li><strong>Frequency Stability (25%):</strong> Target 50Hz ± 0.5Hz, larger deviations reduce score</li>
-                    <li><strong>Power Factor Quality (25%):</strong> Target PF > 0.9, lower values reduce score</li>
-                    <li><strong>Phase Balance (25%):</strong> Imbalance < 8% optimal, higher values penalized</li>
-                    <li><strong>Classification:</strong> Stable (>0.8), Marginal (0.6-0.8), Unstable (<0.6)</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Holistic Health Metric:</strong> Single score summarizing overall grid condition</li>
-                    <li><strong>Early Warning System:</strong> Detect degrading conditions before failures occur</li>
-                    <li><strong>Prioritized Actions:</strong> Recommendations ranked by impact and urgency</li>
-                    <li><strong>Prevent Cascading Failures:</strong> Identify weak points before they propagate</li>
-                    <li><strong>Regulatory Compliance:</strong> Support IEEE 1547 and grid code adherence</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Grid stability depends on multiple interacting factors that cannot be assessed in isolation. The ensemble approach combines Random Forest's pattern recognition with expert rules based on power system stability theory (voltage collapse criteria, frequency nadir limits, etc.). The model is validated against NERC/WECC stability criteria and correctly identifies 94% of unstable conditions in simulation, providing operators with reliable decision support during critical events.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Optimal Dispatch Info Modal -->
-<div class="modal" id="dispatchInfoModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-purple">
-                <h5 class="modal-title"><i class="fas fa-clipboard-list"></i> Optimal Dispatch Advisory</h5>
-                <button class="close" onclick="closeModal('dispatchInfoModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model recommends optimal generation dispatch based on current load, load trends, and reserve requirements. It allocates generation across base-load, intermediate, and peak units to minimize fuel costs while maintaining adequate spinning reserves (typically 15%).</p>
-
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>Support Vector Regression (SVR)</strong> with RBF kernel, combined with economic dispatch optimization. Trained on 5,000+ load-generation scenarios covering all operating conditions from minimum to peak load.</p>
-
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>Light Load (50-70%):</strong> Primarily base-load units, minimum cycling</li>
-                    <li><strong>Normal Load (70-90%):</strong> Base-load plus intermediate units as needed</li>
-                    <li><strong>Peak Load (90-100%):</strong> All units committed including peaking capacity</li>
-                    <li><strong>Reserve Requirement:</strong> Generation = Load × 1.15 (15% spinning reserve)</li>
-                    <li><strong>Dispatch Strategy:</strong> Merit order - cheapest units first (base 70%, intermediate 20%, peak 10%)</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Minimize Fuel Costs:</strong> Optimal unit commitment reduces generation costs 10-20%</li>
-                    <li><strong>Maintain Reliability:</strong> Adequate reserves ensure response to contingencies</li>
-                    <li><strong>Reduce Emissions:</strong> Efficient dispatch minimizes environmental impact</li>
-                    <li><strong>Unit Commitment Guidance:</strong> Inform which generators to start/stop</li>
-                    <li><strong>Renewable Integration:</strong> Optimize conventional generation with variable renewables</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Economic dispatch is a classical power systems optimization problem balancing cost minimization with reliability constraints. The SVR model learns the complex relationship between load patterns and optimal generation allocation, accounting for unit heat rates, ramp rates, and minimum up/down times. The approach follows IEEE and NERC standards for reserve margins and economic dispatch. Validation against actual utility dispatch data shows 12-18% cost reduction compared to heuristic dispatch methods.</p>
+                <div class="chart-wrap"><canvas id="pfChart"></canvas></div>
+                <p class="model-info">pf_forecast_model.joblib | XGBoost Regressor | 16 features | Target PF ≥ 0.95 = Good</p>
             </div>
         </div>
     </div>
@@ -387,277 +85,100 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Modal functions
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.add('show');
-    }
+const API_URL = "{{ api_url }}";
+const WS_URL  = "{{ ws_url }}";
+const TOKEN   = "{{ request.session.access_token|default:'' }}";
+const MAX_PTS = 80;
 
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('show');
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.classList.remove('show');
+function mkDual(id, l1, l2, c1, c2) {
+    return new Chart(document.getElementById(id), {
+        type: 'line',
+        data: { labels: [], datasets: [
+            { label: l1, data: [], borderColor: c1, backgroundColor: c1+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false },
+            { label: l2, data: [], borderColor: c2, backgroundColor: c2+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, borderDash:[5,4], fill: false },
+        ]},
+        options: { animation: false, responsive: true, maintainAspectRatio: false,
+            scales: { x: { display: false }, y: { beginAtZero: false } },
+            plugins: { legend: { display: true, position: 'top' } }
         }
+    });
+}
+
+function push2(chart, label, v1, v2) {
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(v1);
+    chart.data.datasets[1].data.push(v2);
+    if (chart.data.labels.length > MAX_PTS) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); chart.data.datasets[1].data.shift(); }
+    chart.update('none');
+}
+
+function fmtTime(ts) { return ts ? new Date(ts).toLocaleTimeString() : ''; }
+
+const qChart  = mkDual('qChart',  'Current Q (kVAR)', 'Forecast Q (kVAR)', '#9b59b6', '#3498db');
+const pfChart = mkDual('pfChart', 'Current PF',        'Forecast PF',        '#e67e22', '#27ae60');
+
+function pfBadge(status) {
+    const el = document.getElementById('pfStatus');
+    el.className = 'badge';
+    const s = (status || '').toLowerCase();
+    if (s === 'good') { el.classList.add('badge-good'); }
+    else if (s === 'warning') { el.classList.add('badge-warning'); }
+    else { el.classList.add('badge-poor'); }
+    el.textContent = status || '—';
+}
+
+function applyDecision(ml, ts) {
+    const t  = fmtTime(ts);
+    const rp = ml.reactive_and_pf || {};
+
+    if (Object.keys(rp).length) {
+        // Q panel
+        document.getElementById('qCurrent').textContent  = rp.current_q_kvar       != null ? rp.current_q_kvar.toFixed(3)+' kVAR' : '—';
+        document.getElementById('qForecast').textContent = rp.forecast_q_next_kvar  != null ? rp.forecast_q_next_kvar.toFixed(3)+' kVAR' : '—';
+        document.getElementById('qComp').textContent     = rp.compensation_needed_kvar != null ? rp.compensation_needed_kvar.toFixed(3)+' kVAR' : '—';
+        const qOk = rp.compensation_needed_kvar != null && rp.compensation_needed_kvar < 0.05;
+        const qEl = document.getElementById('qStatus');
+        qEl.className = 'badge'; qEl.classList.add(qOk ? 'badge-good' : 'badge-warning');
+        qEl.textContent = qOk ? 'Balanced' : 'Compensation Needed';
+        push2(qChart, t, rp.current_q_kvar, rp.forecast_q_next_kvar);
+
+        // PF panel
+        document.getElementById('pfCurrent').textContent  = rp.current_pf      != null ? rp.current_pf.toFixed(4) : '—';
+        document.getElementById('pfForecast').textContent = rp.forecast_pf_next != null ? rp.forecast_pf_next.toFixed(4) : '—';
+        document.getElementById('pfStatusTxt').textContent = rp.pf_status || '—';
+        pfBadge(rp.pf_status);
+        push2(pfChart, t, rp.current_pf, rp.forecast_pf_next);
     }
+}
 
-    // Use global API_URL from base.html
-    const token = '{{ request.session.access_token }}';
-    let isSimulation = false;
-    let stabilityChart, dispatchChart;
-    let pollingInterval = null;
-
-    // Initialize charts
-    function initCharts() {
-        // Grid Stability Chart
-        const stabCtx = document.getElementById('stabilityChart').getContext('2d');
-        stabilityChart = new Chart(stabCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Stability Score',
-                    data: [],
-                    borderColor: '#2ecc71',
-                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { min: 0, max: 1, title: { display: true, text: 'Score (0-1)' } }
-                }
-            }
-        });
-
-        // Optimal Dispatch Chart
-        const dispCtx = document.getElementById('dispatchChart').getContext('2d');
-        dispatchChart = new Chart(dispCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Base Load', 'Intermediate', 'Peak'],
-                datasets: [{
-                    label: 'Recommended Generation (kW)',
-                    data: [0, 0, 0],
-                    backgroundColor: ['#3498db', '#f39c12', '#e74c3c']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Generation (kW)' } }
-                }
-            }
-        });
-    }
-
-    // Fetch and update all visualizations
-    async function updateVisualizations() {
+function connectWS() {
+    const ws = new WebSocket(WS_URL);
+    const el = document.getElementById('wsStatus');
+    ws.onopen  = () => { el.textContent = 'WebSocket: connected — live updates active'; el.style.color='#2ecc71'; };
+    ws.onclose = () => { el.textContent = 'WebSocket: disconnected — reconnecting…'; el.style.color='#e74c3c'; setTimeout(connectWS,3000); };
+    ws.onmessage = e => {
         try {
-            const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'new_data' && msg.ml && msg.ml.decision_making)
+                applyDecision(msg.ml.decision_making, msg.data.timestamp);
+        } catch(ex) {}
+    };
+}
 
-            // Grid Stability
-            const stabResp = await fetch(`${API_URL}/api/ml/decision/stability-score${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const stabData = await stabResp.json();
+async function loadHistory() {
+    const h = {'Authorization': `Bearer ${TOKEN}`};
+    try {
+        const res  = await fetch(`${API_URL}/api/ml/decision/reactive-pf-forecast?hours=6`, {headers:h});
+        const data = (await res.json()).data || [];
+        data.forEach(d => {
+            push2(qChart,  fmtTime(d.timestamp), d.current_q_kvar, d.forecast_q_next_kvar);
+            push2(pfChart, fmtTime(d.timestamp), d.current_pf, d.forecast_pf_next);
+        });
+    } catch(e) { console.warn('History load failed:', e); }
+}
 
-            if (stabData.predictions && stabData.predictions.length > 0) {
-                const limited = stabData.predictions.slice(-200);
-                stabilityChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
-                stabilityChart.data.datasets[0].data = limited.map(p => p.stability_score);
-                stabilityChart.update();
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('stabilityScore').textContent = (latest.stability_score * 100).toFixed(1);
-
-                const statusEl = document.getElementById('stabilityStatus');
-                if (latest.status === 'Stable') {
-                    statusEl.className = 'status-badge status-optimal';
-                } else if (latest.status === 'Marginal') {
-                    statusEl.className = 'status-badge status-good';
-                } else {
-                    statusEl.className = 'status-badge status-suboptimal';
-                }
-                statusEl.textContent = latest.status;
-
-                // Show recommendations if any
-                if (latest.recommendations && latest.recommendations.length > 0) {
-                    document.getElementById('recommendations').style.display = 'block';
-                    const recList = document.getElementById('recList');
-                    recList.innerHTML = latest.recommendations.map(r => `<li>${r}</li>`).join('');
-                } else {
-                    document.getElementById('recommendations').style.display = 'none';
-                }
-            }
-
-            // Optimal Dispatch
-            const dispResp = await fetch(`${API_URL}/api/ml/decision/optimal-dispatch${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const dispData = await dispResp.json();
-
-            if (dispData.predictions && dispData.predictions.length > 0) {
-                const latest = dispData.predictions[dispData.predictions.length - 1];
-                dispatchChart.data.datasets[0].data = [
-                    latest.dispatch_plan.base_load,
-                    latest.dispatch_plan.intermediate,
-                    latest.dispatch_plan.peak
-                ];
-                dispatchChart.update();
-
-                document.getElementById('dispatchLoad').textContent = latest.current_load_kw.toFixed(1) + ' kW';
-                document.getElementById('recGen').textContent = latest.recommended_generation_kw.toFixed(1) + ' kW';
-
-                const reserveEl = document.getElementById('reserveStatus');
-                if (latest.reserve_margin_pct >= 15) {
-                    reserveEl.className = 'status-badge status-optimal';
-                    reserveEl.textContent = 'Adequate';
-                } else if (latest.reserve_margin_pct >= 10) {
-                    reserveEl.className = 'status-badge status-good';
-                    reserveEl.textContent = 'Marginal';
-                } else {
-                    reserveEl.className = 'status-badge status-suboptimal';
-                    reserveEl.textContent = 'Low';
-                }
-            }
-
-        } catch (error) {
-            console.error('Error fetching ML data:', error);
-        }
-    }
-
-    // WebSocket connection for real-time ML predictions
-    let mlWebSocket = null;
-    let reconnectTimeout = null;
-
-    function connectMLWebSocket() {
-        if (mlWebSocket && (mlWebSocket.readyState === WebSocket.OPEN || mlWebSocket.readyState === WebSocket.CONNECTING)) {
-            return;
-        }
-
-        const wsUrl = API_URL.replace('http://', 'ws://').replace('https://', 'wss://') +
-                      `/ws/ml-predictions?is_simulation=${isSimulation}`;
-
-        console.log('Connecting to ML WebSocket:', wsUrl);
-        mlWebSocket = new WebSocket(wsUrl);
-
-        mlWebSocket.onopen = () => {
-            console.log('ML WebSocket connected - Real-time predictions active');
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
-        };
-
-        mlWebSocket.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-
-                if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
-                    updateMLCharts(message.data);
-                }
-            } catch (error) {
-                console.error('Error processing WebSocket message:', error);
-            }
-        };
-
-        mlWebSocket.onerror = (error) => {
-            console.error('ML WebSocket error:', error);
-        };
-
-        mlWebSocket.onclose = () => {
-            console.log('ML WebSocket disconnected - Starting polling fallback');
-            mlWebSocket = null;
-            reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
-            if (!pollingInterval) {
-                pollingInterval = setInterval(updateVisualizations, 30000);
-            }
-        };
-    }
-
-    function updateMLCharts(predictions) {
-        if (!predictions || !predictions.decision_making) {
-            console.warn('No decision making data in WebSocket message');
-            return;
-        }
-
-        const decision = predictions.decision_making;
-
-        // Grid Stability Scoring
-        if (decision.grid_stability_scoring) {
-            const stab = decision.grid_stability_scoring;
-            document.getElementById('stabilityScore').textContent = (stab.stability_score * 100).toFixed(1);
-
-            const statusEl = document.getElementById('stabilityStatus');
-            if (stab.status === 'Stable') {
-                statusEl.className = 'status-badge status-optimal';
-            } else if (stab.status === 'Marginal') {
-                statusEl.className = 'status-badge status-good';
-            } else {
-                statusEl.className = 'status-badge status-suboptimal';
-            }
-            statusEl.textContent = stab.status || 'Unknown';
-
-            if (stab.recommendations && stab.recommendations.length > 0) {
-                document.getElementById('recommendations').style.display = 'block';
-                document.getElementById('recList').innerHTML = stab.recommendations.map(r => `<li>${r}</li>`).join('');
-            } else {
-                document.getElementById('recommendations').style.display = 'none';
-            }
-        }
-
-        // Optimal Dispatch Advisory
-        if (decision.optimal_dispatch_advisory) {
-            const dispatch = decision.optimal_dispatch_advisory;
-            document.getElementById('dispatchLoad').textContent = dispatch.current_load_kw.toFixed(1) + ' kW';
-            document.getElementById('recGen').textContent = dispatch.recommended_generation_kw.toFixed(1) + ' kW';
-
-            const reserveEl = document.getElementById('reserveStatus');
-            if (dispatch.reserve_margin_pct >= 15) {
-                reserveEl.className = 'status-badge status-optimal';
-                reserveEl.textContent = 'Adequate';
-            } else if (dispatch.reserve_margin_pct >= 10) {
-                reserveEl.className = 'status-badge status-good';
-                reserveEl.textContent = 'Marginal';
-            } else {
-                reserveEl.className = 'status-badge status-suboptimal';
-                reserveEl.textContent = 'Low';
-            }
-        }
-    }
-
-    // Check simulator mode from global variable
-    function updateSimulatorMode() {
-        isSimulation = isSimulatorMode;
-    }
-
-    // Listen for simulator mode changes
-    document.addEventListener('simulatorModeChanged', (e) => {
-        isSimulation = e.detail.isSimulatorMode;
-        updateVisualizations();
-    });
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        initCharts();
-        updateSimulatorMode();
-        updateVisualizations();
-        connectMLWebSocket();
-    });
-
-    window.addEventListener('beforeunload', () => {
-        if (mlWebSocket) mlWebSocket.close();
-        if (reconnectTimeout) clearTimeout(reconnectTimeout);
-        if (pollingInterval) clearInterval(pollingInterval);
-    });
+connectWS();
+loadHistory();
 </script>
 {% endblock %}

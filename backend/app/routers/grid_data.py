@@ -15,13 +15,11 @@ Date: 2025
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import List, Optional
 from datetime import datetime, timedelta
 import math
-
-from sqlalchemy.orm import joinedload
 
 from app.database import get_db
 from app.models.db_models import (
@@ -29,12 +27,19 @@ from app.models.db_models import (
     FrequencyTable, ActivePowerTable, ReactivePowerTable
 )
 from app.schemas.grid_data import GridDataPoint, GridDataResponse, GridStatus
-from app.utils.security import get_current_user, check_role
+from app.utils.security import get_current_user, check_role, get_optional_user
 from app.services.data_generator import grid_generator
-from app.services.ml_inference_engine import ml_inference_engine
 from app.routers.websocket_router import manager
 
 router = APIRouter()
+
+_LOAD_OPTS = [
+    joinedload(DateTimeTable.voltage),
+    joinedload(DateTimeTable.current),
+    joinedload(DateTimeTable.frequency),
+    joinedload(DateTimeTable.active_power),
+    joinedload(DateTimeTable.reactive_power),
+]
 
 
 
@@ -43,69 +48,83 @@ router = APIRouter()
 async def add_grid_data(
     data: GridDataPoint,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(check_role("operator"))
 ):
     """
-    Add new grid data point to database and broadcast to WebSocket clients.
+    Webhook: Add a new grid data point, run ML inference, broadcast via WebSocket.
+    No authentication required — designed for real-time sensor/script input.
+
+    After saving, the system:
+    1. Re-loads the record with all related tables
+    2. Fetches up to 1010 recent records for lag/rolling features
+    3. Runs all 9 ML models
+    4. Broadcasts raw data + ML predictions via WebSocket to all connected clients
     """
+    from app.services.ml_inference_engine import ml_inference_engine
+
     try:
-        # Create datetime entry
-        dt_entry = DateTimeTable(timestamp=data.timestamp)
+        # ── Save to DB ────────────────────────────────────────────────
+        dt_entry = DateTimeTable(
+            timestamp=data.timestamp,
+            is_simulation=getattr(data, "is_simulation", False),
+        )
         db.add(dt_entry)
         db.flush()
-        
-        # Create related entries
+
         db.add(VoltageTable(timestamp_id=dt_entry.id, **data.voltage.dict()))
         db.add(CurrentTable(timestamp_id=dt_entry.id, **data.current.dict()))
         db.add(FrequencyTable(timestamp_id=dt_entry.id, **data.frequency.dict()))
         db.add(ActivePowerTable(timestamp_id=dt_entry.id, **data.active_power.dict()))
         db.add(ReactivePowerTable(timestamp_id=dt_entry.id, **data.reactive_power.dict()))
-        
         db.commit()
-        
-        # Prepare data for broadcast
-        broadcast_data = {
-            "id": dt_entry.id,
-            "timestamp": data.timestamp.isoformat(),
-            "voltage": data.voltage.dict(),
-            "current": data.current.dict(),
-            "frequency": {"value": data.frequency.frequency_value},
-            "active_power": data.active_power.dict(),
-            "reactive_power": data.reactive_power.dict()
-        }
-        
-        # Broadcast raw grid data to all WebSocket clients
+
+        # ── Reload with relationships ─────────────────────────────────
+        saved = (
+            db.query(DateTimeTable)
+            .options(*_LOAD_OPTS)
+            .filter(DateTimeTable.id == dt_entry.id)
+            .first()
+        )
+
+        # ── Fetch recent history for lag features ─────────────────────
+        history = (
+            db.query(DateTimeTable)
+            .options(*_LOAD_OPTS)
+            .filter(DateTimeTable.is_simulation == saved.is_simulation)
+            .order_by(desc(DateTimeTable.timestamp))
+            .limit(1010)
+            .all()
+        )
+        history.reverse()   # oldest → newest
+
+        # ── ML Inference ──────────────────────────────────────────────
+        ml_results = ml_inference_engine.process(saved, history)
+
+        # ── WebSocket broadcast ───────────────────────────────────────
         await manager.broadcast({
             "type": "new_data",
-            "data": broadcast_data
+            "data": {
+                "id": dt_entry.id,
+                "timestamp": data.timestamp.isoformat(),
+                "voltage": data.voltage.dict(),
+                "current": data.current.dict(),
+                "frequency": {"value": data.frequency.frequency_value},
+                "active_power": data.active_power.dict(),
+                "reactive_power": data.reactive_power.dict(),
+            },
+            "ml": {
+                "realtime_monitoring":    ml_results.get("realtime_monitoring", {}),
+                "predictive_maintenance": ml_results.get("predictive_maintenance", {}),
+                "energy_flow":            ml_results.get("energy_flow", {}),
+                "decision_making":        ml_results.get("decision_making", {}),
+            },
         })
-
-        # Run ML inference on the new data point and broadcast predictions
-        try:
-            dt_for_ml = db.query(DateTimeTable).options(
-                joinedload(DateTimeTable.voltage),
-                joinedload(DateTimeTable.current),
-                joinedload(DateTimeTable.frequency),
-                joinedload(DateTimeTable.active_power),
-                joinedload(DateTimeTable.reactive_power)
-            ).filter(DateTimeTable.id == dt_entry.id).first()
-
-            if dt_for_ml:
-                ml_predictions = ml_inference_engine.process_data_point(dt_for_ml)
-                await manager.broadcast({
-                    "type": "ml_update",
-                    "data": ml_predictions,
-                    "timestamp": data.timestamp.isoformat()
-                })
-        except Exception as ml_err:
-            import logging
-            logging.getLogger(__name__).warning(f"ML inference failed after data insert: {ml_err}")
 
         return {
             "success": True,
-            "message": "Grid data added, broadcasted, and ML predictions generated",
             "data_id": dt_entry.id,
-            "timestamp": dt_entry.timestamp
+            "timestamp": dt_entry.timestamp,
+            "websocket_clients_notified": len(manager.active_connections),
+            "ml_inference_ran": True,
         }
 
     except Exception as e:

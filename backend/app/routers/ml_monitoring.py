@@ -1,6 +1,6 @@
 """
 Real-time Monitoring ML API
-Provides AI-powered real-time grid monitoring insights
+Models: voltage_anomaly (IsolationForest), energy_anomaly (XGBClassifier)
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -15,204 +15,89 @@ from ..services.ml_inference_engine import ml_inference_engine
 from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/monitoring", tags=["ML Monitoring"])
-# Active models: voltage_anomaly, harmonic_analysis, phase_imbalance
-# Removed: frequency_stability (model file missing - LSTM not trained)
+
+_OPTS = [
+    joinedload(DateTimeTable.voltage),
+    joinedload(DateTimeTable.current),
+    joinedload(DateTimeTable.frequency),
+    joinedload(DateTimeTable.active_power),
+    joinedload(DateTimeTable.reactive_power),
+]
+
+
+def _history(db, is_simulation, limit=1010):
+    q = db.query(DateTimeTable).options(*_OPTS)
+    if is_simulation is not None:
+        q = q.filter(DateTimeTable.is_simulation == is_simulation)
+    rows = q.order_by(desc(DateTimeTable.timestamp)).limit(limit).all()
+    rows.reverse()
+    return rows
 
 
 @router.get("/latest")
-async def get_latest_monitoring_insights(
+async def latest(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get latest real-time monitoring ML insights
-
-    Returns:
-        All 4 monitoring model predictions for the latest data point
-    """
-    # Get latest data point
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    latest = query.order_by(desc(DateTimeTable.timestamp)).first()
-
-    if not latest:
+    history = _history(db, is_simulation)
+    if not history:
         return {"error": "No data available"}
-
-    # Run ML inference
-    predictions = ml_inference_engine.process_data_point(latest)
-
+    record = history[-1]
+    preds = ml_inference_engine.process(record, history)
     return {
-        "timestamp": latest.timestamp,
-        "is_simulation": latest.is_simulation,
-        "insights": predictions['real_time_monitoring'],
-        "metadata": predictions['metadata']
+        "timestamp": record.timestamp,
+        "is_simulation": record.is_simulation,
+        "insights": preds["realtime_monitoring"],
+        "metadata": preds["metadata"],
     }
 
 
 @router.get("/voltage-anomaly")
-async def get_voltage_anomaly_detection(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+async def voltage_anomaly(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get voltage anomaly detection over time
-
-    Returns:
-        Time-series of voltage anomaly predictions
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
+    history = _history(db, is_simulation)
+    if hours:
         since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
+        history = [r for r in history if r.timestamp >= since]
 
     results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        voltage_anomaly = predictions['real_time_monitoring']['voltage_anomaly_detection']
-
-        results.append({
-            'timestamp': point.timestamp,
-            'is_anomaly': voltage_anomaly['is_anomaly'],
-            'anomaly_score': voltage_anomaly['anomaly_score'],
-            'severity': voltage_anomaly['severity'],
-            'v_avg': point.voltage[0].average if point.voltage else 0
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        va = preds["realtime_monitoring"].get("voltage_anomaly", {})
+        results.append({"timestamp": record.timestamp, **va})
 
     return {
-        "algorithm": "Isolation Forest",
-        "training_dataset": "2000 normal samples + 500 anomaly samples (voltage sags, swells, imbalances)",
-        "benefits": "Early detection of voltage quality issues prevents equipment damage and improves grid reliability",
-        "data": results
+        "model": "Isolation Forest (voltage_anomaly_iforest.joblib)",
+        "features": "volt_A/B/C, VUF%, v_stability_delta, roll_mean/std, hour_sin/cos, is_workday",
+        "data": results,
     }
 
 
-@router.get("/harmonic-analysis")
-async def get_harmonic_analysis(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+@router.get("/energy-anomaly")
+async def energy_anomaly(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get harmonic distortion analysis
-
-    Returns:
-        Time-series of THD estimates and harmonic components
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
+    history = _history(db, is_simulation)
+    if hours:
         since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
+        history = [r for r in history if r.timestamp >= since]
 
     results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        harmonic = predictions['real_time_monitoring']['harmonic_analysis']
-
-        results.append({
-            'timestamp': point.timestamp,
-            'thd_percentage': harmonic['thd_percentage'],
-            'thd_category': harmonic['thd_category'],
-            'harmonics': harmonic['harmonics'],
-            'quality_impact': harmonic['quality_impact']
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        ea = preds["realtime_monitoring"].get("energy_anomaly", {})
+        results.append({"timestamp": record.timestamp, **ea})
 
     return {
-        "algorithm": "Random Forest + FFT (Fast Fourier Transform)",
-        "training_dataset": "500 samples with varying power quality conditions, labeled by THD levels",
-        "benefits": "Identifies harmonic pollution sources, helps specify filter requirements, and improves power quality",
-        "data": results
-    }
-
-
-
-@router.get("/phase-imbalance")
-async def get_phase_imbalance(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
-    is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get phase imbalance classification
-
-    Returns:
-        Time-series of phase imbalance severity
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
-    results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        imbalance = predictions['real_time_monitoring']['phase_imbalance_classification']
-
-        results.append({
-            'timestamp': point.timestamp,
-            'severity': imbalance['severity'],
-            'voltage_imbalance': imbalance['voltage_imbalance'],
-            'current_imbalance': imbalance['current_imbalance'],
-            'power_imbalance': imbalance['power_imbalance'],
-            'balance_score': imbalance['balance_score'],
-            'action_required': imbalance['action_required']
-        })
-
-    return {
-        "algorithm": "Decision Tree Classifier",
-        "training_dataset": "500 samples with varying degrees of phase imbalance (normal, warning, critical)",
-        "benefits": "Identifies unbalanced loads early, guides load redistribution, extends equipment life",
-        "data": results
+        "model": "XGBoost Classifier (anomaly_detection_model.joblib)",
+        "features": "volt_A/B/C, I_A/B/C, P_T, Q_T, FP_T, Frec, hour",
+        "data": results,
     }

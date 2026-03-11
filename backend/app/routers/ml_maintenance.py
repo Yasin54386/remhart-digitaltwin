@@ -1,6 +1,6 @@
 """
 Predictive Maintenance ML API
-Provides AI-powered predictive maintenance insights
+Models: equipment_failure, overload_risk, epqi_score, voltage_sag
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -16,343 +16,132 @@ from ..utils.security import get_optional_user
 
 router = APIRouter(prefix="/api/ml/maintenance", tags=["ML Maintenance"])
 
+_OPTS = [
+    joinedload(DateTimeTable.voltage),
+    joinedload(DateTimeTable.current),
+    joinedload(DateTimeTable.frequency),
+    joinedload(DateTimeTable.active_power),
+    joinedload(DateTimeTable.reactive_power),
+]
+
+
+def _history(db, is_simulation, limit=1010):
+    q = db.query(DateTimeTable).options(*_OPTS)
+    if is_simulation is not None:
+        q = q.filter(DateTimeTable.is_simulation == is_simulation)
+    rows = q.order_by(desc(DateTimeTable.timestamp)).limit(limit).all()
+    rows.reverse()
+    return rows
+
+
+def _since_filter(history, hours):
+    if not hours:
+        return history
+    since = datetime.now() - timedelta(hours=hours)
+    return [r for r in history if r.timestamp >= since]
+
 
 @router.get("/latest")
-async def get_latest_maintenance_insights(
+async def latest(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """Get latest predictive maintenance ML insights"""
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    latest = query.order_by(desc(DateTimeTable.timestamp)).first()
-
-    if not latest:
+    history = _history(db, is_simulation)
+    if not history:
         return {"error": "No data available"}
-
-    predictions = ml_inference_engine.process_data_point(latest)
-
+    record = history[-1]
+    preds = ml_inference_engine.process(record, history)
     return {
-        "timestamp": latest.timestamp,
-        "is_simulation": latest.is_simulation,
-        "insights": predictions['predictive_maintenance'],
-        "metadata": predictions['metadata']
+        "timestamp": record.timestamp,
+        "is_simulation": record.is_simulation,
+        "insights": preds["predictive_maintenance"],
+        "metadata": preds["metadata"],
     }
 
 
 @router.get("/equipment-failure")
-async def get_equipment_failure_prediction(
-    hours: Optional[int] = Query(None, description="Hours of historical data (optional, defaults to all data)"),
+async def equipment_failure(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get equipment failure probability predictions
-
-    Returns:
-        Time-series of failure probability and contributing factors
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    # Only filter by time if hours parameter is provided
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()  # Show oldest to newest for charts
-
+    history = _since_filter(_history(db, is_simulation), hours)
     results = []
-    total_points = len(data_points)
-    skipped_count = 0
-    error_count = 0
-
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-
-        # Track errors
-        if 'error' in predictions:
-            error_count += 1
-            continue
-
-        # Track missing maintenance predictions
-        if not predictions.get('predictive_maintenance'):
-            skipped_count += 1
-            continue
-
-        failure = predictions['predictive_maintenance'].get('equipment_failure_prediction')
-        if not failure:
-            skipped_count += 1
-            continue
-
-        results.append({
-            'timestamp': point.timestamp,
-            'failure_probability': failure['failure_probability'],
-            'risk_level': failure['risk_level'],
-            'time_to_failure': failure['estimated_days_to_failure'],
-            'contributing_factors': failure['contributing_factors']
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        ef = preds["predictive_maintenance"].get("equipment_failure", {})
+        results.append({"timestamp": record.timestamp, **ef})
 
     return {
-        "algorithm": "XGBoost (Gradient Boosting)",
-        "training_dataset": "Synthetic data based on equipment stress indicators: high current, voltage/current variance, poor power factor, imbalances",
-        "benefits": "Prevents unexpected equipment failures, optimizes maintenance scheduling, reduces downtime costs",
-        "predictions": results,
-        "diagnostics": {
-            "total_data_points": total_points,
-            "successful_predictions": len(results),
-            "errors": error_count,
-            "skipped": skipped_count,
-            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
-        }
+        "model": "XGBoost Regressor (equipment_failure_model.joblib)",
+        "features": "volt_A/B/C, I_A/B/C, P_A/B/C, Q_A/B/C",
+        "data": results,
     }
 
 
 @router.get("/overload-risk")
-async def get_overload_risk_classification(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+async def overload_risk(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get overload risk classification
-
-    Returns:
-        Time-series of overload risk levels
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
+    history = _since_filter(_history(db, is_simulation), hours)
     results = []
-    total_points = len(data_points)
-    skipped_count = 0
-    error_count = 0
-
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-
-        # Track errors
-        if 'error' in predictions:
-            error_count += 1
-            continue
-
-        if not predictions.get('predictive_maintenance'):
-            skipped_count += 1
-            continue
-
-        overload = predictions['predictive_maintenance'].get('overload_risk_classification')
-        if not overload:
-            skipped_count += 1
-            continue
-
-        results.append({
-            'timestamp': point.timestamp,
-            'risk_level': overload['risk_level'],
-            'load_percentage': overload['current_load_pct'],
-            'peak_phase': overload['peak_phase'],
-            'mitigation_needed': overload['mitigation_needed']
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        ov = preds["predictive_maintenance"].get("overload_risk", {})
+        results.append({"timestamp": record.timestamp, **ov})
 
     return {
-        "algorithm": "SVM (Support Vector Machine)",
-        "training_dataset": "500 samples with varying load levels from 50% to 200% of rated capacity",
-        "benefits": "Prevents equipment overheating and damage, enables proactive load shedding decisions",
-        "predictions": results,
-        "diagnostics": {
-            "total_data_points": total_points,
-            "successful_predictions": len(results),
-            "errors": error_count,
-            "skipped": skipped_count,
-            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
-        }
+        "model": "XGBoost Classifier (overload_risk_model.joblib)",
+        "features": "volt_A/B/C, I_A/B/C, P_T, Q_T, FP_T",
+        "classes": "Low (0) / Medium (1) / High (2)",
+        "data": results,
     }
 
 
-@router.get("/power-quality-index")
-async def get_power_quality_index(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+@router.get("/epqi-score")
+async def epqi_score(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get Power Quality Index (PQI) scores
-
-    Returns:
-        Time-series of comprehensive power quality scores
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
+    history = _since_filter(_history(db, is_simulation), hours)
     results = []
-    total_points = len(data_points)
-    skipped_count = 0
-    error_count = 0
-
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-
-        # Track errors
-        if 'error' in predictions:
-            error_count += 1
-            continue
-
-        if not predictions.get('predictive_maintenance'):
-            skipped_count += 1
-            continue
-
-        pqi = predictions['predictive_maintenance'].get('power_quality_index')
-        if not pqi:
-            skipped_count += 1
-            continue
-
-        results.append({
-            'timestamp': point.timestamp,
-            'pqi_score': pqi['pqi_score'],
-            'quality_grade': pqi['grade'],
-            'voltage_quality': pqi['voltage_quality'],
-            'frequency_quality': pqi['frequency_quality'],
-            'power_factor_quality': pqi['power_factor_quality'],
-            'improvement_areas': pqi['improvement_areas']
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        pq = preds["predictive_maintenance"].get("epqi_score", {})
+        results.append({"timestamp": record.timestamp, **pq})
 
     return {
-        "algorithm": "Neural Network (Multi-layer Perceptron)",
-        "training_dataset": "Comprehensive dataset combining voltage quality (40%), frequency quality (30%), and power factor quality (30%) metrics",
-        "benefits": "Provides single metric for overall power quality, helps prioritize improvement investments",
-        "predictions": results,
-        "diagnostics": {
-            "total_data_points": total_points,
-            "successful_predictions": len(results),
-            "errors": error_count,
-            "skipped": skipped_count,
-            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
-        }
+        "model": "XGBoost Regressor (epqi_score_model.joblib)",
+        "features": "volt_A/B/C, I_A/B/C, P_T, Q_T, FP_T, Frec",
+        "grades": "Excellent ≥90 | Good ≥70 | Fair ≥50 | Poor <50",
+        "data": results,
     }
 
 
 @router.get("/voltage-sag")
-async def get_voltage_sag_prediction(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+async def voltage_sag(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get voltage sag event predictions
-
-    Returns:
-        Time-series of voltage sag probabilities
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
+    history = _since_filter(_history(db, is_simulation), hours)
     results = []
-    total_points = len(data_points)
-    skipped_count = 0
-    error_count = 0
-
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-
-        # Track errors
-        if 'error' in predictions:
-            error_count += 1
-            continue
-
-        if not predictions.get('predictive_maintenance'):
-            skipped_count += 1
-            continue
-
-        sag = predictions['predictive_maintenance'].get('voltage_sag_prediction')
-        if not sag:
-            skipped_count += 1
-            continue
-
-        results.append({
-            'timestamp': point.timestamp,
-            'sag_probability': sag['sag_probability'],
-            'risk_level': sag['risk_level'],
-            'expected_duration_ms': sag['expected_duration_ms'],
-            'affected_phases': sag['affected_phases']
-        })
+    for i, record in enumerate(history):
+        preds = ml_inference_engine.process(record, history[: i + 1])
+        vs = preds["predictive_maintenance"].get("voltage_sag", {})
+        results.append({"timestamp": record.timestamp, **vs})
 
     return {
-        "algorithm": "Random Forest Classifier",
-        "training_dataset": "Data including normal conditions and voltage sag events (< 0.9 pu voltage)",
-        "benefits": "Enables installation of protective devices before sags occur, protects sensitive equipment",
-        "predictions": results,
-        "diagnostics": {
-            "total_data_points": total_points,
-            "successful_predictions": len(results),
-            "errors": error_count,
-            "skipped": skipped_count,
-            "success_rate": f"{(len(results)/total_points*100):.1f}%" if total_points > 0 else "0%"
-        }
+        "model": "XGBoost Regressor (voltage_sag_xgb_regressor.joblib)",
+        "features": "volt_A/B/C, I_A/B/C, P_A/B/C/T, Q_A/B/C/T, FP_A/B/C/T, Frec",
+        "output": "sag_probability: 0.0=Normal, 0.25=Precursor, 0.5=Load-induced, 0.75=Fault-induced, 1.0=Severe",
+        "data": results,
     }

@@ -19,7 +19,7 @@ class MLInferenceEngine:
 
     def __init__(self):
         """Initialize the inference engine with feature engineer and model manager"""
-        self.feature_engineer = FeatureEngineer(window_size=100)
+        self.feature_engineer = FeatureEngineer(window_size=200)
         self.model_manager = model_manager
         logger.info("ML Inference Engine initialized")
 
@@ -40,7 +40,12 @@ class MLInferenceEngine:
             # Flatten features for easier model access
             flat_features = self._flatten_features(features)
 
-            # Step 2: Run all model predictions
+            # Step 2: Merge training-convention feature names into flat_features
+            # so model methods can use training names (volt_A, I_A, P_T, etc.)
+            model_features = self.feature_engineer.extract_model_input_features(data_point)
+            flat_features.update(model_features)
+
+            # Step 3: Run all model predictions
             predictions = {
                 'real_time_monitoring': self._run_monitoring_models(features, flat_features),
                 'predictive_maintenance': self._run_maintenance_models(features, flat_features),

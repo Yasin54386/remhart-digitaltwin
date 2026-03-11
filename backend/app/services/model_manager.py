@@ -44,31 +44,25 @@ class ModelManager:
         """Load all trained models from disk"""
         logger.info("Loading ML models...")
 
-        # Define all model paths
+        # Map model keys to actual .joblib filenames produced by the training scripts
         model_files = {
-            # Real-time Monitoring Models
-            'voltage_anomaly': 'voltage_anomaly_detector.pkl',
-            'harmonic_analyzer': 'harmonic_analyzer.pkl',
-            'frequency_stability': 'frequency_stability_predictor.pkl',
-            'phase_imbalance': 'phase_imbalance_classifier.pkl',
+            # Real-time Monitoring
+            'voltage_anomaly': 'voltage_anomaly_iforest.joblib',       # dict {model, scaler, features, chosen_contamination}
+            'anomaly_detection': 'anomaly_detection_model.joblib',      # raw XGBClassifier
 
-            # Predictive Maintenance Models
-            'equipment_failure': 'equipment_failure_predictor.pkl',
-            'overload_risk': 'overload_risk_classifier.pkl',
-            'power_quality': 'power_quality_index.pkl',
-            'voltage_sag': 'voltage_sag_predictor.pkl',
+            # Predictive Maintenance
+            'equipment_failure': 'equipment_failure_model.joblib',      # raw XGBRegressor
+            'overload_risk': 'overload_risk_model.joblib',              # raw XGBClassifier (LabelEncoded)
+            'epqi_score': 'epqi_score_model.joblib',                    # raw XGBRegressor (0-100)
+            'voltage_sag': 'voltage_sag_xgb_regressor.joblib',         # dict {model, features, target, ...}
 
-            # Energy Flow Models
-            'load_forecast': 'load_forecasting_lstm.pkl',
-            'energy_loss': 'energy_loss_estimator.pkl',
-            'power_flow': 'power_flow_optimizer.pkl',
-            'demand_response': 'demand_response_potential.pkl',
+            # Energy Flow
+            'load_forecast': 'load_forecasting_model.joblib',          # raw XGBRegressor
+            'health_index': 'energy_imbalance_and_health_index_model.joblib',  # raw XGBRegressor (0-100)
 
-            # Decision Making Models
-            'reactive_compensation': 'reactive_power_compensator.pkl',
-            'load_balancing': 'load_balancing_optimizer.pkl',
-            'grid_stability': 'grid_stability_scorer.pkl',
-            'optimal_dispatch': 'optimal_dispatch_advisor.pkl'
+            # Decision Making
+            'reactive_q': 'reactive_q_forecast_model.joblib',          # raw XGBRegressor
+            'pf_forecast': 'pf_forecast_model.joblib',                  # raw XGBRegressor
         }
 
         # Try to load each model
@@ -78,7 +72,7 @@ class ModelManager:
             if model_path.exists():
                 try:
                     self.models[model_name] = joblib.load(model_path)
-                    logger.info(f"✓ Loaded {model_name}")
+                    logger.info(f"✓ Loaded {model_name} from {filename}")
                 except Exception as e:
                     logger.warning(f"✗ Failed to load {model_name}: {e}")
                     self.models[model_name] = None
@@ -86,43 +80,37 @@ class ModelManager:
                 logger.warning(f"✗ Model file not found: {filename}")
                 self.models[model_name] = None
 
-        logger.info(f"Models loaded: {sum(1 for m in self.models.values() if m is not None)}/{len(model_files)}")
+        loaded = sum(1 for m in self.models.values() if m is not None)
+        logger.info(f"Models loaded: {loaded}/{len(model_files)}")
 
     # ==================== REAL-TIME MONITORING PREDICTIONS ====================
 
     def predict_voltage_anomaly(self, features: Dict) -> Dict[str, Any]:
         """
-        Predict voltage anomalies using Isolation Forest
-
-        Args:
-            features: Voltage features from FeatureEngineer
-
-        Returns:
-            Dictionary with anomaly score and status
+        Predict voltage anomalies using the trained Isolation Forest model.
+        Model artifact is a dict: {model, scaler, features (13 names), chosen_contamination}
         """
-        model = self.models.get('voltage_anomaly')
-        if model is None:
+        artifact = self.models.get('voltage_anomaly')
+        if not isinstance(artifact, dict):
             return self._mock_voltage_anomaly(features)
 
         try:
-            # Extract relevant features
-            X = np.array([[
-                features['v_avg'],
-                features['v_variance'],
-                features['v_imbalance_pct'],
-                features['v_deviation_pct'],
-                features['v_rate_of_change']
-            ]])
+            iforest = artifact['model']
+            scaler = artifact['scaler']
+            feat_names = artifact['features']  # 13 feature names from training
 
-            # Predict (-1 = anomaly, 1 = normal)
-            prediction = model.predict(X)[0]
-            anomaly_score = model.score_samples(X)[0]
+            X = np.array([[features.get(f, 0.0) for f in feat_names]])
+            X_scaled = scaler.transform(X)
+
+            # decision_function: higher = more normal, lower = more anomalous
+            score = float(iforest.decision_function(X_scaled)[0])
+            prediction = int(iforest.predict(X_scaled)[0])  # -1=anomaly, 1=normal
 
             return {
                 'is_anomaly': bool(prediction == -1),
-                'anomaly_score': float(anomaly_score),
-                'confidence': abs(float(anomaly_score)),
-                'severity': self._get_severity(anomaly_score)
+                'anomaly_score': score,
+                'confidence': abs(score),
+                'severity': self._get_severity(score)
             }
         except Exception as e:
             logger.warning(f"Voltage anomaly prediction failed, using mock: {e}")
@@ -227,81 +215,56 @@ class ModelManager:
 
     def predict_equipment_failure(self, features: Dict) -> Dict[str, Any]:
         """
-        Predict equipment failure probability using XGBoost
-
-        Args:
-            features: All features from FeatureEngineer
-
-        Returns:
-            Failure probability and time-to-failure estimate
+        Predict equipment failure probability using trained XGBRegressor.
+        Features: volt_A, volt_B, volt_C, I_A, I_B, I_C, P_A, P_B, P_C, Q_A, Q_B, Q_C
+        Output: continuous failure_probability in [0, 1]
         """
         model = self.models.get('equipment_failure')
         if model is None:
             return self._mock_equipment_failure(features)
 
         try:
-            X = np.array([[
-                features['i_avg'],
-                features['i_variance'],
-                features['v_variance'],
-                features['power_factor'],
-                features['i_spike_detected'],
-                features['v_imbalance_pct']
-            ]])
+            feat_names = ['volt_A', 'volt_B', 'volt_C', 'I_A', 'I_B', 'I_C',
+                          'P_A', 'P_B', 'P_C', 'Q_A', 'Q_B', 'Q_C']
+            X = np.array([[features.get(f, 0.0) for f in feat_names]])
 
-            failure_prob = model.predict_proba(X)[0][1]
+            failure_prob = float(model.predict(X)[0])
+            failure_prob = max(0.0, min(1.0, failure_prob))
 
             return {
-                'failure_probability': float(failure_prob),
+                'failure_probability': failure_prob,
                 'risk_level': self._get_risk_level(failure_prob),
                 'estimated_days_to_failure': self._estimate_ttf(failure_prob),
                 'contributing_factors': self._identify_failure_factors(features)
             }
         except Exception as e:
-            logger.warning(f"Model prediction failed, using mock: {e}")
+            logger.warning(f"Equipment failure prediction failed, using mock: {e}")
             return self._mock_equipment_failure(features)
 
     def classify_overload_risk(self, features: Dict) -> Dict[str, Any]:
         """
-        Classify overload risk using SVM
-
-        Args:
-            features: Current and power features
-
-        Returns:
-            Overload risk classification
+        Classify overload risk using trained XGBClassifier (LabelEncoded).
+        Features: volt_A, volt_B, volt_C, I_A, I_B, I_C, P_T, Q_T, FP_T
+        LabelEncoder alphabetical order: 0=High, 1=Low, 2=Medium
         """
-        model_data = self.models.get('overload_risk')
-        if model_data is None:
+        model = self.models.get('overload_risk')
+        if model is None:
             return self._mock_overload_risk(features)
 
         try:
-            # Unwrap model and scaler from dict
-            if isinstance(model_data, dict):
-                model = model_data['model']
-                scaler = model_data['scaler']
-            else:
-                model = model_data
-                scaler = None
+            feat_names = ['volt_A', 'volt_B', 'volt_C', 'I_A', 'I_B', 'I_C', 'P_T', 'Q_T', 'FP_T']
+            X = np.array([[features.get(f, 0.0) for f in feat_names]])
 
-            X = np.array([[
-                features['i_avg'],
-                features['p_total'],
-                features['i_max_phase'],
-                features['i_imbalance_pct']
-            ]])
-
-            # Apply scaler if available
-            if scaler is not None:
-                X = scaler.transform(X)
-
-            risk_class = model.predict(X)[0]
+            label_code = int(model.predict(X)[0])
+            # LabelEncoder assigns codes alphabetically: High=0, Low=1, Medium=2
+            label_map = {0: 'High', 1: 'Low', 2: 'Medium'}
+            risk_class = label_map.get(label_code, 'Low')
 
             return {
-                'risk_level': str(risk_class),  # Convert numpy string to Python string
+                'risk_level': risk_class,
                 'current_load_pct': self._calculate_load_percentage(features),
                 'peak_phase': self._identify_peak_phase(features),
-                'mitigation_needed': bool(str(risk_class) in ['Medium', 'High'])
+                'mitigation_needed': bool(risk_class in ['Medium', 'High'])
             }
         except Exception as e:
             logger.warning(f"Overload risk classification failed, using mock: {e}")
@@ -309,96 +272,109 @@ class ModelManager:
 
     def calculate_power_quality_index(self, features: Dict) -> Dict[str, Any]:
         """
-        Calculate comprehensive power quality index using Neural Network
-
-        Args:
-            features: Quality features
-
-        Returns:
-            PQI score and component breakdown
+        Calculate EPQI (Enhanced Power Quality Index) using trained XGBRegressor.
+        Features: volt_A, volt_B, volt_C, I_A, I_B, I_C, P_T, Q_T, FP_T, Frec
+        Output: EPQI score in [0, 100]
         """
-        model = self.models.get('power_quality')
+        model = self.models.get('epqi_score')
         if model is None:
             return self._mock_pqi(features)
 
-        X = np.array([[
-            features['v_quality_score'],
-            features['f_quality_score'],
-            features['pf_quality_score'],
-            features['v_thd_estimated'],
-            features['overall_balance_score']
-        ]])
+        try:
+            feat_names = ['volt_A', 'volt_B', 'volt_C', 'I_A', 'I_B', 'I_C',
+                          'P_T', 'Q_T', 'FP_T', 'Frec']
+            X = np.array([[features.get(f, 0.0) for f in feat_names]])
 
-        pqi = model.predict(X)[0][0]
+            pqi = float(model.predict(X)[0])
+            pqi = max(0.0, min(100.0, pqi))
 
-        return {
-            'pqi_score': float(pqi),
-            'grade': self._get_pqi_grade(pqi),
-            'voltage_quality': features['v_quality_score'],
-            'frequency_quality': features['f_quality_score'],
-            'power_factor_quality': features['pf_quality_score'],
-            'improvement_areas': self._identify_improvements(features)
-        }
+            return {
+                'pqi_score': pqi,
+                'grade': self._get_pqi_grade(pqi),
+                'voltage_quality': features.get('v_quality_score', pqi),
+                'frequency_quality': features.get('f_quality_score', pqi),
+                'power_factor_quality': features.get('pf_quality_score', pqi),
+                'improvement_areas': self._identify_improvements(features)
+            }
+        except Exception as e:
+            logger.warning(f"EPQI prediction failed, using mock: {e}")
+            return self._mock_pqi(features)
 
     def predict_voltage_sag(self, features: Dict) -> Dict[str, Any]:
         """
-        Predict voltage sag events using Random Forest
-
-        Args:
-            features: Voltage and time-series features
-
-        Returns:
-            Sag probability and severity
+        Predict voltage sag severity using trained XGBRegressor.
+        Model artifact is a dict: {model, features (list), target, time_aware_split}
+        Output: continuous sag severity score in [0, 1]
         """
-        model = self.models.get('voltage_sag')
-        if model is None:
+        artifact = self.models.get('voltage_sag')
+        if not isinstance(artifact, dict):
             return self._mock_voltage_sag(features)
 
-        X = np.array([[
-            features['v_avg'],
-            features['voltage_avg_std'],
-            features['v_rate_of_change'],
-            features['voltage_avg_trend']
-        ]])
+        model = artifact.get('model')
+        feat_names = artifact.get('features', [])
 
-        sag_prob = model.predict_proba(X)[0][1]
+        if model is None or not feat_names:
+            return self._mock_voltage_sag(features)
 
-        return {
-            'sag_probability': float(sag_prob),
-            'risk_level': self._get_risk_level(sag_prob),
-            'expected_duration_ms': self._estimate_sag_duration(sag_prob),
-            'affected_phases': self._identify_affected_phases(features)
-        }
+        try:
+            X = np.array([[features.get(f, 0.0) for f in feat_names]])
+            sag_severity = float(model.predict(X)[0])
+            sag_severity = max(0.0, min(1.0, sag_severity))
+
+            return {
+                'sag_probability': sag_severity,
+                'risk_level': self._get_risk_level(sag_severity),
+                'expected_duration_ms': self._estimate_sag_duration(sag_severity),
+                'affected_phases': self._identify_affected_phases(features)
+            }
+        except Exception as e:
+            logger.warning(f"Voltage sag prediction failed, using mock: {e}")
+            return self._mock_voltage_sag(features)
 
     # ==================== ENERGY FLOW PREDICTIONS ====================
 
     def forecast_load(self, features: Dict) -> Dict[str, Any]:
         """
-        Forecast future load using Prophet
-
-        Args:
-            features: Time-series power features
-
-        Returns:
-            Load forecasts for next 24 hours
+        Forecast next-period load using trained XGBRegressor.
+        Uses lag features (load_lag_1h, load_lag_24h, etc.) and time features.
+        Generates a simplified 24-hour forecast using the model's one-step prediction.
         """
         model = self.models.get('load_forecast')
         if model is None:
             return self._mock_load_forecast(features)
 
-        # Prophet uses different interface, simplified here
-        current_load = features['p_total']
-        trend = features.get('active_power_trend', 0)
+        try:
+            # Use feature names stored in the model if available
+            if hasattr(model, 'feature_names_in_'):
+                feat_names = list(model.feature_names_in_)
+            else:
+                feat_names = [
+                    'load_lag_1h', 'load_lag_24h', 'load_lag_168h',
+                    'load_roll_mean_3h', 'load_roll_mean_6h', 'load_roll_mean_24h',
+                    'load_roll_std_3h', 'load_roll_std_6h', 'load_roll_std_24h',
+                    'load_roll_min_24h', 'load_roll_max_24h',
+                    'hour_sin', 'hour_cos', 'is_workday'
+                ]
 
-        # Generate 24-hour forecast
-        forecasts = [current_load + trend * i for i in range(1, 25)]
+            X = np.array([[features.get(f, 0.0) for f in feat_names]])
+            next_load = float(model.predict(X)[0])
 
-        return {
-            'current_load_kw': current_load,
-            'hourly_forecast': forecasts,
-            'peak_load_time': self._find_peak_time(forecasts),
-            'trend': 'increasing' if trend > 0 else 'decreasing'
-        }
+            current_load = features.get('P_T', features.get('p_total', 0.0))
+            trend = (next_load - current_load) / max(abs(current_load), 1e-6)
+            # Generate 24-hour forecast (first step from model, rest extrapolated)
+            forecasts = [next_load] + [
+                next_load * (1 + trend * i * 0.005) for i in range(1, 24)
+            ]
+
+            return {
+                'current_load_kw': current_load,
+                'hourly_forecast': forecasts,
+                'peak_load_time': self._find_peak_time(forecasts),
+                'trend': 'increasing' if next_load > current_load else 'decreasing'
+            }
+        except Exception as e:
+            logger.warning(f"Load forecast failed, using mock: {e}")
+            return self._mock_load_forecast(features)
 
     def estimate_energy_loss(self, features: Dict) -> Dict[str, Any]:
         """
@@ -489,33 +465,69 @@ class ModelManager:
 
     def optimize_reactive_compensation(self, features: Dict) -> Dict[str, Any]:
         """
-        Optimize reactive power compensation using Neural Network
-
-        Args:
-            features: Power factor and reactive power features
-
-        Returns:
-            Compensation recommendations
+        Reactive power compensation using trained reactive_q and pf_forecast XGBRegressors.
+        Features: Q_lag_1h, Q_lag_24h, PF_lag_1h, hour_sin, hour_cos, is_workday
+                  + optional P_T, volt_A/B/C, I_A/B/C, Frec, FP_T, Q_T
         """
-        model = self.models.get('reactive_compensation')
-        if model is None:
+        q_model = self.models.get('reactive_q')
+        pf_model = self.models.get('pf_forecast')
+
+        current_pf = features.get('FP_T', features.get('power_factor', 0.9))
+        current_p = features.get('P_T', features.get('p_total', 0.0))
+        target_pf = 0.95
+
+        if q_model is None and pf_model is None:
             return self._mock_reactive_compensation(features)
 
-        X = np.array([[
-            features['power_factor'],
-            features['q_total'],
-            features['p_total']
-        ]])
+        try:
+            # Determine feature list from model or use known defaults
+            base_feat = ['Q_lag_1h', 'Q_lag_24h', 'PF_lag_1h',
+                         'hour_sin', 'hour_cos', 'is_workday']
+            optional_feat = ['P_T', 'volt_A', 'volt_B', 'volt_C',
+                             'I_A', 'I_B', 'I_C', 'Frec', 'FP_T', 'Q_T']
 
-        optimal_q = float(model.predict(X)[0])
+            def get_feat_names(mdl):
+                if mdl is not None and hasattr(mdl, 'feature_names_in_'):
+                    return list(mdl.feature_names_in_)
+                # Fallback: use base + available optional
+                return base_feat + [f for f in optional_feat if f in features]
 
-        return {
-            'current_pf': features['power_factor'],
-            'target_pf': 0.95,
-            'required_compensation_kvar': float(optimal_q - features['q_total']),
-            'capacitor_size_kvar': self._calculate_capacitor_size(optimal_q - features['q_total']),
-            'expected_savings': self._calculate_pf_savings(features)
-        }
+            # Predict next-period reactive power
+            if q_model is not None:
+                q_feat = get_feat_names(q_model)
+                X_q = np.array([[features.get(f, 0.0) for f in q_feat]])
+                predicted_q = float(q_model.predict(X_q)[0])
+            else:
+                predicted_q = features.get('Q_T', features.get('q_total', 0.0))
+
+            # Predict next-period power factor
+            if pf_model is not None:
+                pf_feat = get_feat_names(pf_model)
+                X_pf = np.array([[features.get(f, 0.0) for f in pf_feat]])
+                predicted_pf = float(pf_model.predict(X_pf)[0])
+                predicted_pf = max(0.0, min(1.0, predicted_pf))
+            else:
+                predicted_pf = current_pf
+
+            # Required capacitor compensation to reach target PF
+            safe_pf = max(0.01, predicted_pf)
+            if safe_pf < target_pf:
+                required_q = current_p * (
+                    np.tan(np.arccos(safe_pf)) - np.tan(np.arccos(target_pf))
+                )
+            else:
+                required_q = 0.0
+
+            return {
+                'current_pf': current_pf,
+                'target_pf': target_pf,
+                'required_compensation_kvar': float(required_q),
+                'capacitor_size_kvar': self._calculate_capacitor_size(required_q),
+                'expected_savings': self._calculate_pf_savings(features)
+            }
+        except Exception as e:
+            logger.warning(f"Reactive compensation prediction failed, using mock: {e}")
+            return self._mock_reactive_compensation(features)
 
     def optimize_load_balancing(self, features: Dict) -> Dict[str, Any]:
         """

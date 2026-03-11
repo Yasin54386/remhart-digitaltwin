@@ -344,6 +344,146 @@ class FeatureEngineer:
         slope = np.polyfit(x, y, 1)[0]
         return slope
 
+    def extract_model_input_features(self, data_point) -> Dict:
+        """
+        Extract features using training convention names expected by trained models.
+        Call this AFTER extract_all_features() so history is already updated.
+        """
+        voltage = data_point.voltage[0] if data_point.voltage else None
+        current = data_point.current[0] if data_point.current else None
+        active_power = data_point.active_power[0] if data_point.active_power else None
+        reactive_power = data_point.reactive_power[0] if data_point.reactive_power else None
+        frequency = data_point.frequency[0] if data_point.frequency else None
+
+        # Raw phase values using training convention names
+        volt_A = voltage.phaseA if voltage else 230.0
+        volt_B = voltage.phaseB if voltage else 230.0
+        volt_C = voltage.phaseC if voltage else 230.0
+
+        I_A = current.phaseA if current else 0.0
+        I_B = current.phaseB if current else 0.0
+        I_C = current.phaseC if current else 0.0
+
+        P_A = active_power.phaseA if active_power else 0.0
+        P_B = active_power.phaseB if active_power else 0.0
+        P_C = active_power.phaseC if active_power else 0.0
+        P_T = active_power.total if active_power else 0.0
+
+        Q_A = reactive_power.phaseA if reactive_power else 0.0
+        Q_B = reactive_power.phaseB if reactive_power else 0.0
+        Q_C = reactive_power.phaseC if reactive_power else 0.0
+        Q_T = reactive_power.total if reactive_power else 0.0
+
+        Frec = frequency.frequency_value if frequency else 50.0
+
+        # Power factor total (FP_T)
+        S_T = math.sqrt(P_T ** 2 + Q_T ** 2) if (P_T != 0 or Q_T != 0) else 0.0001
+        FP_T = P_T / S_T if S_T > 0 else 0.9
+
+        # Voltage average
+        v_avg = (volt_A + volt_B + volt_C) / 3.0
+
+        # Voltage unbalance factor % (VUF%)
+        v_unbalance_max_dev = max(abs(volt_A - v_avg), abs(volt_B - v_avg), abs(volt_C - v_avg))
+        vuf_pct = (v_unbalance_max_dev / v_avg * 100.0) if v_avg != 0 else 0.0
+
+        # Phase-to-phase absolute deviations
+        v_ab_dev = abs(volt_A - volt_B)
+        v_bc_dev = abs(volt_B - volt_C)
+        v_ac_dev = abs(volt_A - volt_C)
+
+        # Voltage stability delta (abs change from last recorded average)
+        v_avg_history = list(self.history['voltage_avg'])
+        v_stability_delta = abs(v_avg - v_avg_history[-1]) if len(v_avg_history) >= 1 else 0.0
+
+        # Rolling stats on v_avg (window = 6, as in the training script)
+        if len(v_avg_history) >= 6:
+            recent6 = v_avg_history[-6:]
+            v_avg_roll_mean = float(np.mean(recent6))
+            v_avg_roll_std = float(np.std(recent6))
+        elif len(v_avg_history) >= 2:
+            v_avg_roll_mean = float(np.mean(v_avg_history))
+            v_avg_roll_std = float(np.std(v_avg_history))
+        else:
+            v_avg_roll_mean = v_avg
+            v_avg_roll_std = 0.0
+
+        # Time features from timestamp
+        ts = getattr(data_point, 'timestamp', None)
+        if ts:
+            try:
+                hour = ts.hour
+                is_workday = int(ts.weekday() < 5)
+            except Exception:
+                hour = 0
+                is_workday = 1
+        else:
+            hour = 0
+            is_workday = 1
+
+        hour_sin = math.sin(2 * math.pi * hour / 24.0)
+        hour_cos = math.cos(2 * math.pi * hour / 24.0)
+
+        # Active power lag features (history indices assume ~1-hour sampling)
+        ap_hist = list(self.history['active_power'])
+        n_ap = len(ap_hist)
+        load_lag_1h = ap_hist[-2] if n_ap >= 2 else P_T
+        load_lag_24h = ap_hist[-25] if n_ap >= 25 else P_T
+        load_lag_168h = ap_hist[-169] if n_ap >= 169 else P_T
+
+        # Rolling stats for load forecasting (on lag-1h values in history)
+        win3 = ap_hist[-4:-1] if n_ap >= 4 else ap_hist
+        win6 = ap_hist[-7:-1] if n_ap >= 7 else ap_hist
+        win24 = ap_hist[-25:-1] if n_ap >= 25 else ap_hist
+
+        load_roll_mean_3h = float(np.mean(win3)) if win3 else P_T
+        load_roll_mean_6h = float(np.mean(win6)) if win6 else P_T
+        load_roll_mean_24h = float(np.mean(win24)) if win24 else P_T
+        load_roll_min_24h = float(np.min(win24)) if win24 else P_T
+        load_roll_max_24h = float(np.max(win24)) if win24 else P_T
+        load_roll_std_3h = float(np.std(win3)) if len(win3) > 1 else 0.0
+        load_roll_std_6h = float(np.std(win6)) if len(win6) > 1 else 0.0
+        load_roll_std_24h = float(np.std(win24)) if len(win24) > 1 else 0.0
+
+        # Reactive power and PF lag features
+        q_hist = list(self.history['reactive_power'])
+        pf_hist = list(self.history['power_factor'])
+        Q_lag_1h = q_hist[-2] if len(q_hist) >= 2 else Q_T
+        Q_lag_24h = q_hist[-25] if len(q_hist) >= 25 else Q_T
+        PF_lag_1h = pf_hist[-2] if len(pf_hist) >= 2 else FP_T
+
+        return {
+            # Raw measurements (training convention names)
+            'volt_A': volt_A, 'volt_B': volt_B, 'volt_C': volt_C,
+            'I_A': I_A, 'I_B': I_B, 'I_C': I_C,
+            'P_A': P_A, 'P_B': P_B, 'P_C': P_C,
+            'Q_A': Q_A, 'Q_B': Q_B, 'Q_C': Q_C,
+            'P_T': P_T, 'Q_T': Q_T, 'FP_T': FP_T, 'Frec': Frec,
+            # Derived voltage features (voltage anomaly model)
+            'v_avg': v_avg,
+            'vuf_pct': vuf_pct,
+            'v_stability_delta': v_stability_delta,
+            'v_ab_dev': v_ab_dev, 'v_bc_dev': v_bc_dev, 'v_ac_dev': v_ac_dev,
+            'v_avg_roll_mean': v_avg_roll_mean, 'v_avg_roll_std': v_avg_roll_std,
+            # Time features
+            'hour': hour, 'is_workday': is_workday,
+            'hour_sin': hour_sin, 'hour_cos': hour_cos,
+            # Load lag features (load forecasting model)
+            'load_lag_1h': load_lag_1h,
+            'load_lag_24h': load_lag_24h,
+            'load_lag_168h': load_lag_168h,
+            'load_roll_mean_3h': load_roll_mean_3h,
+            'load_roll_mean_6h': load_roll_mean_6h,
+            'load_roll_mean_24h': load_roll_mean_24h,
+            'load_roll_std_3h': load_roll_std_3h,
+            'load_roll_std_6h': load_roll_std_6h,
+            'load_roll_std_24h': load_roll_std_24h,
+            'load_roll_min_24h': load_roll_min_24h,
+            'load_roll_max_24h': load_roll_max_24h,
+            # Reactive / PF lag features (reactive_q and pf_forecast models)
+            'Q_lag_1h': Q_lag_1h, 'Q_lag_24h': Q_lag_24h, 'PF_lag_1h': PF_lag_1h,
+        }
+
     # Default feature dictionaries for missing data
     def _default_voltage_features(self) -> Dict:
         return {

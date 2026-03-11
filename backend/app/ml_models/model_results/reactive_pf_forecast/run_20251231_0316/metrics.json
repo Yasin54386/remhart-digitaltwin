@@ -1,0 +1,59 @@
+{
+    "ReactivePower_Q": {
+        "MAE": 0.008279171764700005,
+        "RMSE": 0.012337527591580385,
+        "R2_Score": 0.7389712947094769,
+        "MAPE_percent": 40129.050602245414,
+        "Best_params": {
+            "subsample": 0.85,
+            "reg_lambda": 2.0,
+            "reg_alpha": 0.1,
+            "n_estimators": 1200,
+            "min_child_weight": 1,
+            "max_depth": 3,
+            "learning_rate": 0.03,
+            "gamma": 0.0,
+            "colsample_bytree": 0.75
+        }
+    },
+    "PowerFactor_PF": {
+        "MAE": 0.05125319356566188,
+        "RMSE": 0.07935800509497792,
+        "R2_Score": 0.702815880906295,
+        "MAPE_percent": 2.91790773596057,
+        "Best_params": {
+            "subsample": 0.85,
+            "reg_lambda": 1.0,
+            "reg_alpha": 0.0,
+            "n_estimators": 600,
+            "min_child_weight": 1,
+            "max_depth": 3,
+            "learning_rate": 0.03,
+            "gamma": 0.0,
+            "colsample_bytree": 0.95
+        }
+    },
+    "Data": {
+        "Features_used": [
+            "Q_lag_1h",
+            "Q_lag_24h",
+            "PF_lag_1h",
+            "hour_sin",
+            "hour_cos",
+            "is_workday",
+            "P_T",
+            "volt_A",
+            "volt_B",
+            "volt_C",
+            "I_A",
+            "I_B",
+            "I_C",
+            "Frec",
+            "FP_T",
+            "Q_T"
+        ],
+        "Train_rows": 26539,
+        "Test_rows": 6635,
+        "Time_aware_split": true
+    }
+}

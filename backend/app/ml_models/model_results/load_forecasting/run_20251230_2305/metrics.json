@@ -1,0 +1,31 @@
+{
+    "MAE": 0.020515453996168782,
+    "RMSE": 0.02622612565011649,
+    "NRMSE": 0.09169974003537236,
+    "R2_Score": 0.7168533689421156,
+    "MAPE_percent_floor02": 40.38922036589573,
+    "sMAPE_percent": 34.05999457447727,
+    "MASE": 0.7425339952057929,
+    "Baseline_MAE": 0.02687896610431822,
+    "Baseline_RMSE": 0.038029825211717744,
+    "Baseline_R2": 0.4046233718140393,
+    "AbsTol_0.01_percent": 34.34452871072589,
+    "AbsTol_0.02_percent": 55.873703761027706,
+    "AbsTol_0.05_percent": 95.38771088066864,
+    "Peak_threshold_90pct": 0.144,
+    "Peak_MAE": 0.02246902419595295,
+    "Peak_RMSE": 0.02903681904965866,
+    "Best_params": {
+        "subsample": 0.9,
+        "reg_lambda": 2.0,
+        "reg_alpha": 0.1,
+        "n_estimators": 3500,
+        "min_child_weight": 3,
+        "max_depth": 2,
+        "max_delta_step": 1,
+        "learning_rate": 0.005,
+        "gamma": 0.0,
+        "colsample_bytree": 0.9
+    },
+    "Best_iteration": 2889
+}

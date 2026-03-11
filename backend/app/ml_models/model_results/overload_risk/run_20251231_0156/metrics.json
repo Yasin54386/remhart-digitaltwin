@@ -1,0 +1,23 @@
+{
+    "Macro_F1": 0.9752331208555559,
+    "Weighted_F1": 0.9988147392888921,
+    "Balanced_Accuracy": 0.9824211670141904,
+    "Overall_Accuracy": 0.9988000599970002,
+    "HighRisk_Precision": 0.9957627118644068,
+    "HighRisk_Recall": 0.9791666666666666,
+    "HighRisk_F1": 0.9873949579831932,
+    "Best_params": {
+        "gamma": 0.0,
+        "learning_rate": 0.08,
+        "max_depth": 3,
+        "min_child_weight": 1,
+        "n_estimators": 300
+    },
+    "CV_Folds_Used": 5,
+    "Class_Distribution": {
+        "High": 1200,
+        "Low": 31821,
+        "Medium": 314
+    },
+    "HighRisk_ROC_AUC": 0.9999837923344224
+}

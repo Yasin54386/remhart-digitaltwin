@@ -1,0 +1,14 @@
+{
+    "training_timestamp": "20251229_1732",
+    "model_architecture": "XGBoost Classifier",
+    "performance_metrics": {
+        "f1_score": 0.8969072164948454,
+        "precision": 0.925531914893617,
+        "recall": 0.87,
+        "balanced_accuracy": 0.933918918918919,
+        "roc_auc": 0.9990996138996138
+    },
+    "optimal_operating_point": {
+        "threshold": 0.6199
+    }
+}

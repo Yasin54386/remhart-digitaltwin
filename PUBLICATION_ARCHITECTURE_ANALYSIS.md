@@ -1,6 +1,6 @@
 # REMHART Smart Grid Digital Twin: Comprehensive Architecture Analysis for Publication
 
-**A DTDL-Based Multi-Tier Cloud Architecture with Integrated ML/AI Intelligence**
+**A DTDL-Based Multi-Tier Cloud Architecture with Integrated ML/AI Intelligence for Smart Grids**
 
 ---
 

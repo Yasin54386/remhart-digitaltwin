@@ -1,0 +1,41 @@
+{
+    "MAE": 0.011307542301509144,
+    "RMSE": 0.04198646267136515,
+    "NRMSE": 0.0839729253427303,
+    "R2_Score": 0.9711168058985626,
+    "Best_params": {
+        "subsample": 0.75,
+        "reg_lambda": 3.0,
+        "reg_alpha": 0.0,
+        "n_estimators": 1000,
+        "min_child_weight": 1,
+        "max_depth": 5,
+        "learning_rate": 0.05,
+        "gamma": 0.0,
+        "colsample_bytree": 0.9
+    },
+    "Train_rows": 26668,
+    "Test_rows": 6667,
+    "Time_aware_split": true,
+    "Features_used": [
+        "volt_A",
+        "volt_B",
+        "volt_C",
+        "I_A",
+        "I_B",
+        "I_C",
+        "P_A",
+        "P_B",
+        "P_C",
+        "P_T",
+        "Q_A",
+        "Q_B",
+        "Q_C",
+        "Q_T",
+        "FP_A",
+        "FP_B",
+        "FP_C",
+        "FP_T",
+        "Frec"
+    ]
+}

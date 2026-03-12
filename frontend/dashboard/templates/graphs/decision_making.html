@@ -3,205 +3,305 @@
 
 {% block title %}Decision Making - AI/ML Powered{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .page-header h2 { color: white; margin: 0; font-size: 22px; }
+    .page-header .subtitle { color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 4px; }
+    .ws-status-bar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(0,0,0,0.4);
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ws-dot { width: 10px; height: 10px; border-radius: 50%; background: #f39c12; display: inline-block; }
+    .ws-dot.live { background: #27ae60; }
+    .ws-dot.error { background: #e74c3c; }
+    .ws-label { color: white; font-size: 13px; font-weight: 600; }
+    .ws-updated { color: rgba(255,255,255,0.6); font-size: 12px; }
+    .ml-chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .ml-chart-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    .ml-chart-card h3 { color: #333; font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .kpi-row {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .kpi-row-3 { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
+    .kpi-tile {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 8px 6px;
+        text-align: center;
+    }
+    .kpi-tile .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+    .kpi-tile .kpi-val { font-size: 16px; font-weight: 700; color: #333; margin-top: 2px; }
+    .status-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .badge-ok       { background: #d4edda; color: #155724; }
+    .badge-warn     { background: #fff3cd; color: #856404; }
+    .badge-danger   { background: #f8d7da; color: #721c24; }
+    .badge-inc      { background: #fff3cd; color: #856404; }
+    .badge-dec      { background: #d1ecf1; color: #0c5460; }
+    .badge-gray     { background: #e2e3e5; color: #383d41; }
+    .chart-legend {
+        display: flex;
+        gap: 14px;
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+    .legend-line { display: inline-block; width: 16px; height: 2px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .legend-dashed { border-top: 2px dashed; width: 16px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+    .chart-note { font-size: 11px; color: #999; margin-top: 6px; }
+    canvas { max-height: 220px; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-3">
-
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Page Header -->
+<div class="page-header">
     <div>
-      <h4 class="mb-0 fw-bold">Decision Making</h4>
-      <small class="text-muted">2 ML models &mdash; reactive_q_forecast_model &bull; pf_forecast_model</small>
+        <h2>Decision Making</h2>
+        <div class="subtitle">2 ML models &mdash; reactive_q_forecast_model &bull; pf_forecast_model</div>
     </div>
-    <div class="d-flex align-items-center gap-3">
-      <span class="badge bg-secondary" id="wsStatus">Connecting…</span>
-      <span class="text-muted small" id="lastUpdated">—</span>
-      <div class="form-check form-switch mb-0">
-        <input class="form-check-input" type="checkbox" id="simToggle">
-        <label class="form-check-label small" for="simToggle">Simulation</label>
-      </div>
+    <div class="ws-status-bar">
+        <span class="ws-dot" id="wsDot"></span>
+        <span class="ws-label" id="wsLabel">Connecting…</span>
+        <span class="ws-updated" id="wsUpdated"></span>
     </div>
-  </div>
+</div>
 
-  <div class="row g-3">
+<div class="ml-chart-grid">
 
     <!-- Reactive Q Forecast -->
-    <div class="col-12 col-xl-6">
-      <div class="card h-100 shadow-sm" id="card-rq">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">Reactive Power Forecast (kVAR)</span>
-          <div class="d-flex gap-2">
-            <span class="badge bg-secondary" id="badge-rq">—</span>
-            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#rqModal">Info</button>
-          </div>
+    <div class="ml-chart-card" id="card-rq">
+        <h3>Reactive Power Forecast (kVAR)</h3>
+        <div class="kpi-row kpi-row-3">
+            <div class="kpi-tile">
+                <div class="kpi-label">Current (kVAR)</div>
+                <div class="kpi-val" id="rq-current">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Predicted (kVAR)</div>
+                <div class="kpi-val" id="rq-predicted">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Compensation</div>
+                <div class="kpi-val" id="rq-comp">—</div>
+            </div>
         </div>
-        <div class="card-body p-2">
-          <div class="row text-center mb-2 g-1">
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Current (kVAR)</div><div class="fw-bold" id="rq-current">—</div></div></div>
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Predicted (kVAR)</div><div class="fw-bold" id="rq-predicted">—</div></div></div>
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Compensation</div><div class="fw-bold" id="rq-comp">—</div></div></div>
-          </div>
-          <!-- Two datasets: actual vs predicted -->
-          <canvas id="rqChart" height="220"></canvas>
+        <div style="margin-bottom:8px;">
+            Trend: <span class="status-badge badge-gray" id="badge-rq">—</span>
         </div>
-      </div>
+        <div class="chart-legend">
+            <span><span class="legend-line" style="background:#2980b9;"></span>Actual Q</span>
+            <span style="color:#e67e22;"><span class="legend-dashed" style="border-color:#e67e22;"></span>Predicted Q</span>
+        </div>
+        <canvas id="rqChart"></canvas>
+        <div class="chart-note">Actual vs predicted reactive power</div>
     </div>
 
     <!-- Power Factor Forecast -->
-    <div class="col-12 col-xl-6">
-      <div class="card h-100 shadow-sm" id="card-pf">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">Power Factor Forecast &amp; Compensation Advice</span>
-          <div class="d-flex gap-2">
-            <span class="badge bg-secondary" id="badge-pf">—</span>
-            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pfModal">Info</button>
-          </div>
+    <div class="ml-chart-card" id="card-pf">
+        <h3>Power Factor Forecast &amp; Compensation Advice</h3>
+        <div class="kpi-row kpi-row-4">
+            <div class="kpi-tile">
+                <div class="kpi-label">Current PF</div>
+                <div class="kpi-val" id="pf-current">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Predicted PF</div>
+                <div class="kpi-val" id="pf-predicted">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Target PF</div>
+                <div class="kpi-val" style="color:#27ae60;">0.95</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Comp (kVAR)</div>
+                <div class="kpi-val" id="pf-comp">—</div>
+            </div>
         </div>
-        <div class="card-body p-2">
-          <div class="row text-center mb-2 g-1">
-            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Current PF</div><div class="fw-bold" id="pf-current">—</div></div></div>
-            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Predicted PF</div><div class="fw-bold" id="pf-predicted">—</div></div></div>
-            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Target PF</div><div class="fw-bold text-success">0.95</div></div></div>
-            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Comp (kVAR)</div><div class="fw-bold" id="pf-comp">—</div></div></div>
-          </div>
-          <!-- Two lines: current PF + predicted PF + threshold at 0.95 -->
-          <canvas id="pfChart" height="220"></canvas>
+        <div style="margin-bottom:8px;">
+            Status: <span class="status-badge badge-gray" id="badge-pf">—</span>
         </div>
-      </div>
+        <div class="chart-legend">
+            <span><span class="legend-line" style="background:#27ae60;"></span>Current PF</span>
+            <span style="color:#8e44ad;"><span class="legend-dashed" style="border-color:#8e44ad;"></span>Predicted PF</span>
+            <span style="color:#e74c3c;"><span class="legend-dashed" style="border-color:#e74c3c;"></span>Target (0.95)</span>
+        </div>
+        <canvas id="pfChart"></canvas>
+        <div class="chart-note">PF must stay above 0.95 (red threshold)</div>
     </div>
 
-  </div>
 </div>
-
-<!-- Info Modals -->
-<div class="modal fade" id="rqModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Reactive Power Forecast</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
-    <p><strong>Model:</strong> XGBoost Regressor (<code>reactive_q_forecast_model.joblib</code>)</p>
-    <p><strong>Features:</strong> Q_lag_1h, Q_lag_24h, PF_lag_1h, hour_sin/cos, is_workday (+ optional raw measurements)</p>
-    <p><strong>Output:</strong> Predicted next-period reactive power (kVAR); chart compares actual vs predicted</p>
-    <p><strong>Use:</strong> Capacitor bank scheduling, VAR compensation planning, avoiding reactive power penalties</p>
-  </div>
-</div></div></div>
-
-<div class="modal fade" id="pfModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Power Factor Forecast</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
-    <p><strong>Model:</strong> XGBoost Regressor (<code>pf_forecast_model.joblib</code>)</p>
-    <p><strong>Features:</strong> Same lag + time features as reactive Q model</p>
-    <p><strong>Output:</strong> Predicted PF [0,1]; calculates required capacitor compensation to reach target PF = 0.95</p>
-    <p><strong>Use:</strong> Proactive power factor correction — schedule capacitors before the PF degrades</p>
-  </div>
-</div></div></div>
-
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-const API = 'http://localhost:8001';
-const WS_URL = 'ws://localhost:8001/ws/ml-predictions';
+const ML_WS = API_URL.replace(/^http/, 'ws') + '/ws/ml-predictions';
 const MAX_PTS = 200;
-let isSimulation = false, ws = null;
 
-// Reactive Q — two lines: actual + predicted
+// ── Charts ──────────────────────────────────────────────────────────
+// Reactive Q: two lines — actual + predicted
 const rqChart = new Chart(document.getElementById('rqChart'), {
-  type: 'line',
-  data: { labels: [], datasets: [
-    { label: 'Actual Q (kVAR)', data: [], borderColor: '#2980b9', backgroundColor: '#2980b920', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
-    { label: 'Predicted Q (kVAR)', data: [], borderColor: '#e67e22', backgroundColor: '#e67e2220', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
-  ]},
-  options: { animation: false, responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
-    scales: { x: { display: false }, y: { beginAtZero: false } } }
+    type: 'line',
+    data: { labels: [], datasets: [
+        { label: 'Actual Q (kVAR)',    data: [], borderColor: '#2980b9', backgroundColor: '#2980b922', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+        { label: 'Predicted Q (kVAR)', data: [], borderColor: '#e67e22', backgroundColor: '#e67e2222', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+    ]},
+    options: { animation: false, responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { beginAtZero: false } } }
 });
 
-// PF chart — two lines: current + predicted, plus a 0.95 annotation line
+// PF: three lines — current PF + predicted PF + target 0.95
 const pfChart = new Chart(document.getElementById('pfChart'), {
-  type: 'line',
-  data: { labels: [], datasets: [
-    { label: 'Current PF', data: [], borderColor: '#27ae60', backgroundColor: '#27ae6020', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
-    { label: 'Predicted PF', data: [], borderColor: '#8e44ad', backgroundColor: '#8e44ad20', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
-    { label: 'Target PF (0.95)', data: [], borderColor: '#e74c3c', borderWidth: 1, borderDash: [6,3], pointRadius: 0 },
-  ]},
-  options: { animation: false, responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
-    scales: { x: { display: false }, y: { min: 0.5, max: 1.05 } } }
+    type: 'line',
+    data: { labels: [], datasets: [
+        { label: 'Current PF',     data: [], borderColor: '#27ae60', backgroundColor: '#27ae6022', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+        { label: 'Predicted PF',   data: [], borderColor: '#8e44ad', backgroundColor: '#8e44ad22', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+        { label: 'Target PF 0.95', data: [], borderColor: '#e74c3c', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [6,3], pointRadius: 0 },
+    ]},
+    options: { animation: false, responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { min: 0.5, max: 1.05 } } }
 });
 
-function push2(chart, ts, v0, v1, target) {
-  chart.data.labels.push(ts);
-  chart.data.datasets[0].data.push(v0);
-  chart.data.datasets[1].data.push(v1);
-  if (chart.data.datasets[2]) chart.data.datasets[2].data.push(target);
-  if (chart.data.labels.length > MAX_PTS) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(ds => ds.data.shift());
-  }
-  chart.update('none');
+function pushRq(ts, actual, predicted) {
+    rqChart.data.labels.push(ts);
+    rqChart.data.datasets[0].data.push(actual);
+    rqChart.data.datasets[1].data.push(predicted);
+    if (rqChart.data.labels.length > MAX_PTS) {
+        rqChart.data.labels.shift();
+        rqChart.data.datasets.forEach(ds => ds.data.shift());
+    }
+    rqChart.update('none');
+}
+function pushPf(ts, current, predicted) {
+    pfChart.data.labels.push(ts);
+    pfChart.data.datasets[0].data.push(current);
+    pfChart.data.datasets[1].data.push(predicted);
+    pfChart.data.datasets[2].data.push(0.95);
+    if (pfChart.data.labels.length > MAX_PTS) {
+        pfChart.data.labels.shift();
+        pfChart.data.datasets.forEach(ds => ds.data.shift());
+    }
+    pfChart.update('none');
 }
 
+// ── Badge helpers ─────────────────────────────────────────────────────
+function setBadge(id, text, cls) {
+    const el = document.getElementById(id);
+    el.textContent = text || '—';
+    el.className = 'status-badge ' + (cls || 'badge-gray');
+}
+
+// ── Apply data ───────────────────────────────────────────────────────
 function applyDecision(dm) {
-  const ts = new Date().toLocaleTimeString();
+    const ts = new Date().toLocaleTimeString();
 
-  const rq = dm.reactive_q_forecast || {};
-  document.getElementById('rq-current').textContent   = rq.current_q_kvar   != null ? rq.current_q_kvar.toFixed(3)   : '—';
-  document.getElementById('rq-predicted').textContent = rq.predicted_q_kvar != null ? rq.predicted_q_kvar.toFixed(3) : '—';
-  document.getElementById('rq-comp').textContent      = rq.compensation_needed ? 'Needed' : 'OK';
-  document.getElementById('rq-comp').className        = 'fw-bold '+(rq.compensation_needed ? 'text-warning' : 'text-success');
-  const rqBadge = document.getElementById('badge-rq');
-  rqBadge.textContent = rq.trend || '—';
-  rqBadge.className = 'badge '+(rq.trend==='increasing' ? 'bg-warning text-dark' : rq.trend==='decreasing' ? 'bg-info text-dark' : 'bg-secondary');
-  push2(rqChart, ts, rq.current_q_kvar||0, rq.predicted_q_kvar||0, null);
-  document.getElementById('card-rq').className = 'card h-100 shadow-sm'+(rq.compensation_needed?' border-warning':'');
+    // Reactive Q
+    const rq = dm.reactive_q_forecast || {};
+    document.getElementById('rq-current').textContent   = rq.current_q_kvar   != null ? rq.current_q_kvar.toFixed(3)   : '—';
+    document.getElementById('rq-predicted').textContent = rq.predicted_q_kvar != null ? rq.predicted_q_kvar.toFixed(3) : '—';
+    const rqCompEl = document.getElementById('rq-comp');
+    rqCompEl.textContent = rq.compensation_needed ? 'Needed' : 'OK';
+    rqCompEl.style.color = rq.compensation_needed ? '#f39c12' : '#27ae60';
+    const rqTrend = rq.trend || '';
+    setBadge('badge-rq', rqTrend || '—',
+        rqTrend === 'increasing' ? 'badge-inc' : rqTrend === 'decreasing' ? 'badge-dec' : 'badge-gray');
+    pushRq(ts, rq.current_q_kvar || 0, rq.predicted_q_kvar || 0);
+    const cardRq = document.getElementById('card-rq');
+    cardRq.style.borderLeft = rq.compensation_needed ? '4px solid #f39c12' : '';
 
-  const pf = dm.pf_forecast || {};
-  document.getElementById('pf-current').textContent   = pf.current_pf   != null ? pf.current_pf.toFixed(3)   : '—';
-  document.getElementById('pf-predicted').textContent = pf.predicted_pf != null ? pf.predicted_pf.toFixed(3) : '—';
-  document.getElementById('pf-comp').textContent      = pf.required_compensation_kvar != null ? pf.required_compensation_kvar.toFixed(2)+' kVAR' : '—';
-  const pfBadge = document.getElementById('badge-pf');
-  const pfOk = (pf.predicted_pf||0) >= 0.95;
-  pfBadge.textContent = pfOk ? 'PF OK' : 'Low PF';
-  pfBadge.className = 'badge '+(pfOk ? 'bg-success' : 'bg-danger');
-  push2(pfChart, ts, pf.current_pf||0, pf.predicted_pf||0, 0.95);
-  document.getElementById('card-pf').className = 'card h-100 shadow-sm'+(!pfOk?' border-warning':'');
+    // Power Factor
+    const pf = dm.pf_forecast || {};
+    document.getElementById('pf-current').textContent   = pf.current_pf   != null ? pf.current_pf.toFixed(3)   : '—';
+    document.getElementById('pf-predicted').textContent = pf.predicted_pf != null ? pf.predicted_pf.toFixed(3) : '—';
+    document.getElementById('pf-comp').textContent      = pf.required_compensation_kvar != null ? pf.required_compensation_kvar.toFixed(2) + ' kVAR' : '—';
+    const pfOk = (pf.predicted_pf || 0) >= 0.95;
+    setBadge('badge-pf', pfOk ? 'PF OK' : 'Low PF', pfOk ? 'badge-ok' : 'badge-danger');
+    pushPf(ts, pf.current_pf || 0, pf.predicted_pf || 0);
+    const cardPf = document.getElementById('card-pf');
+    cardPf.style.borderLeft = !pfOk ? '4px solid #f39c12' : '';
 }
 
-function getAuthHeader() {
-  const t = localStorage.getItem('access_token');
-  return t ? {Authorization:`Bearer ${t}`} : {};
-}
-
+// ── Load history ─────────────────────────────────────────────────────
 async function loadHistory() {
-  const sim = isSimulation ? '&is_simulation=true' : '&is_simulation=false';
-  const h = getAuthHeader();
-  try {
-    const [rq, pf] = await Promise.all([
-      fetch(`${API}/api/ml/decision/reactive-q-forecast?limit=200${sim}`, {headers:h}).then(r=>r.json()),
-      fetch(`${API}/api/ml/decision/pf-forecast?limit=200${sim}`, {headers:h}).then(r=>r.json()),
-    ]);
-    rqChart.data.labels=[]; rqChart.data.datasets.forEach(ds=>ds.data=[]);
-    pfChart.data.labels=[]; pfChart.data.datasets.forEach(ds=>ds.data=[]);
-    for (const d of (rq.data||[])) push2(rqChart, new Date(d.timestamp).toLocaleTimeString(), d.current_q_kvar||0, d.predicted_q_kvar||0, null);
-    for (const d of (pf.data||[])) push2(pfChart, new Date(d.timestamp).toLocaleTimeString(), d.current_pf||0, d.predicted_pf||0, 0.95);
-  } catch(e) { console.warn('History load failed', e); }
+    const sim = isSimulatorMode ? '&is_simulation=true' : '&is_simulation=false';
+    const h = authToken ? { Authorization: 'Bearer ' + authToken } : {};
+    try {
+        const [rq, pf] = await Promise.all([
+            fetch(API_URL + '/api/ml/decision/reactive-q-forecast?limit=200' + sim, { headers: h }).then(r => r.json()),
+            fetch(API_URL + '/api/ml/decision/pf-forecast?limit=200'         + sim, { headers: h }).then(r => r.json()),
+        ]);
+        rqChart.data.labels = []; rqChart.data.datasets.forEach(ds => ds.data = []);
+        pfChart.data.labels = []; pfChart.data.datasets.forEach(ds => ds.data = []);
+        for (const d of (rq.data || [])) pushRq(new Date(d.timestamp).toLocaleTimeString(), d.current_q_kvar || 0, d.predicted_q_kvar || 0);
+        for (const d of (pf.data || [])) pushPf(new Date(d.timestamp).toLocaleTimeString(), d.current_pf || 0, d.predicted_pf || 0);
+    } catch(e) { console.warn('History load failed', e); }
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────
+let ws = null;
+function setWsStatus(state) {
+    const dot = document.getElementById('wsDot');
+    const lbl = document.getElementById('wsLabel');
+    if (state === 'live')       { dot.className = 'ws-dot live';  lbl.textContent = 'Live'; }
+    else if (state === 'error') { dot.className = 'ws-dot error'; lbl.textContent = 'Error'; }
+    else                        { dot.className = 'ws-dot';       lbl.textContent = 'Connecting…'; }
 }
 
 function connectWS() {
-  const sim = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
-  ws = new WebSocket(`${WS_URL}${sim}`);
-  ws.onopen = () => { document.getElementById('wsStatus').textContent='Live'; document.getElementById('wsStatus').className='badge bg-success'; setInterval(()=>ws.readyState===1&&ws.send('ping'),25000); };
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type==='initial_predictions'||msg.type==='ml_update') {
-      applyDecision(msg.data?.decision_making||{});
-      document.getElementById('lastUpdated').textContent='Updated: '+new Date().toLocaleTimeString();
-    }
-  };
-  ws.onclose = () => { document.getElementById('wsStatus').textContent='Reconnecting…'; document.getElementById('wsStatus').className='badge bg-warning text-dark'; setTimeout(connectWS,3000); };
-  ws.onerror = () => ws.close();
+    const sim = isSimulatorMode ? '?is_simulation=true' : '?is_simulation=false';
+    ws = new WebSocket(ML_WS + sim);
+    ws.onopen  = () => { setWsStatus('live'); setInterval(() => ws.readyState === 1 && ws.send('ping'), 25000); };
+    ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'initial_predictions' || msg.type === 'ml_update') {
+            applyDecision(msg.data?.decision_making || {});
+            document.getElementById('wsUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        }
+    };
+    ws.onclose = () => { setWsStatus('connecting'); setTimeout(connectWS, 3000); };
+    ws.onerror = () => { setWsStatus('error'); ws.close(); };
 }
 
-document.getElementById('simToggle').addEventListener('change', (e) => { isSimulation=e.target.checked; if(ws)ws.close(); loadHistory().then(connectWS); });
+// ── Init ──────────────────────────────────────────────────────────────
+function onDataSourceChange(isSimMode, simId) {
+    if (ws) ws.close();
+    loadHistory().then(connectWS);
+}
+
 loadHistory().then(connectWS);
 </script>
 {% endblock %}

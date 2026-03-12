@@ -3,217 +3,299 @@
 
 {% block title %}Energy Flow - AI/ML Powered{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .page-header h2 { color: white; margin: 0; font-size: 22px; }
+    .page-header .subtitle { color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 4px; }
+    .ws-status-bar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(0,0,0,0.4);
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ws-dot { width: 10px; height: 10px; border-radius: 50%; background: #f39c12; display: inline-block; }
+    .ws-dot.live { background: #27ae60; }
+    .ws-dot.error { background: #e74c3c; }
+    .ws-label { color: white; font-size: 13px; font-weight: 600; }
+    .ws-updated { color: rgba(255,255,255,0.6); font-size: 12px; }
+    .ml-chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .ml-chart-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    .ml-chart-card h3 { color: #333; font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .kpi-row {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .kpi-row-3 { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
+    .kpi-tile {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 8px 6px;
+        text-align: center;
+    }
+    .kpi-tile .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+    .kpi-tile .kpi-val { font-size: 16px; font-weight: 700; color: #333; margin-top: 2px; }
+    .status-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .badge-excellent { background: #d4edda; color: #155724; }
+    .badge-good   { background: #d1ecf1; color: #0c5460; }
+    .badge-fair   { background: #fff3cd; color: #856404; }
+    .badge-poor   { background: #f8d7da; color: #721c24; }
+    .badge-up     { background: #f8d7da; color: #721c24; }
+    .badge-down   { background: #d4edda; color: #155724; }
+    .badge-stable { background: #d1ecf1; color: #0c5460; }
+    .badge-gray   { background: #e2e3e5; color: #383d41; }
+    .chart-legend {
+        display: flex;
+        gap: 14px;
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+    .legend-dot { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .chart-note { font-size: 11px; color: #999; margin-top: 6px; }
+    canvas { max-height: 220px; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-3">
-
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Page Header -->
+<div class="page-header">
     <div>
-      <h4 class="mb-0 fw-bold">Energy Flow Analysis</h4>
-      <small class="text-muted">2 ML models &mdash; load_forecasting_model &bull; energy_imbalance_and_health_index_model</small>
+        <h2>Energy Flow Analysis</h2>
+        <div class="subtitle">2 ML models &mdash; load_forecasting_model &bull; energy_imbalance_and_health_index_model</div>
     </div>
-    <div class="d-flex align-items-center gap-3">
-      <span class="badge bg-secondary" id="wsStatus">Connecting…</span>
-      <span class="text-muted small" id="lastUpdated">—</span>
-      <div class="form-check form-switch mb-0">
-        <input class="form-check-input" type="checkbox" id="simToggle">
-        <label class="form-check-label small" for="simToggle">Simulation</label>
-      </div>
+    <div class="ws-status-bar">
+        <span class="ws-dot" id="wsDot"></span>
+        <span class="ws-label" id="wsLabel">Connecting…</span>
+        <span class="ws-updated" id="wsUpdated"></span>
     </div>
-  </div>
-
-  <div class="row g-3">
-
-    <!-- Load Forecasting -->
-    <div class="col-12 col-xl-6">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">Load Forecasting (24h ahead)</span>
-          <div class="d-flex gap-2">
-            <span class="badge bg-info text-dark" id="badge-lf">—</span>
-            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#lfModal">Info</button>
-          </div>
-        </div>
-        <div class="card-body p-2">
-          <div class="row text-center mb-2 g-1">
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Current (kW)</div><div class="fw-bold" id="lf-current">—</div></div></div>
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Next Hour (kW)</div><div class="fw-bold" id="lf-next">—</div></div></div>
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Trend</div><div class="fw-bold" id="lf-trend">—</div></div></div>
-          </div>
-          <canvas id="lfChart" height="220"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Energy Health Index -->
-    <div class="col-12 col-xl-6">
-      <div class="card h-100 shadow-sm" id="card-hi">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">Grid Health Index (IEC 61000-4-30)</span>
-          <div class="d-flex gap-2">
-            <span class="badge" id="badge-hi">—</span>
-            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#hiModal">Info</button>
-          </div>
-        </div>
-        <div class="card-body p-2">
-          <div class="row text-center mb-2 g-1">
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Health Score</div><div class="fw-bold" id="hi-score">—</div></div></div>
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Grade</div><div class="fw-bold" id="hi-grade">—</div></div></div>
-            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Status</div><div class="fw-bold" id="hi-status">—</div></div></div>
-          </div>
-          <canvas id="hiChart" height="220"></canvas>
-          <div class="mt-1 small text-muted" id="hi-risks">—</div>
-        </div>
-      </div>
-    </div>
-
-  </div>
 </div>
 
-<!-- Info Modals -->
-<div class="modal fade" id="lfModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Load Forecasting</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
-    <p><strong>Model:</strong> XGBoost Regressor (<code>load_forecasting_model.joblib</code>)</p>
-    <p><strong>Features:</strong> load lag (1h/24h/168h), rolling stats (3h/6h/24h mean/std/min/max), hour_sin/cos, is_workday</p>
-    <p><strong>Output:</strong> Next-period kW prediction; chart shows historical + 24h forecast extrapolation</p>
-  </div>
-</div></div></div>
+<div class="ml-chart-grid">
 
-<div class="modal fade" id="hiModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Grid Health Index</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
-    <p><strong>Model:</strong> XGBoost Regressor (<code>energy_imbalance_and_health_index_model.joblib</code>)</p>
-    <p><strong>Features:</strong> volt_A/B/C, I_A/B/C, P_T, Q_T, FP_T, Frec (IEC 61000-4-30 inspired)</p>
-    <p><strong>Output:</strong> Health score [0,100] — tracks overall grid degradation continuously</p>
-  </div>
-</div></div></div>
+    <!-- Load Forecasting -->
+    <div class="ml-chart-card" id="card-lf">
+        <h3>Load Forecasting (24h ahead)</h3>
+        <div class="kpi-row kpi-row-3">
+            <div class="kpi-tile">
+                <div class="kpi-label">Current (kW)</div>
+                <div class="kpi-val" id="lf-current">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Next Hour (kW)</div>
+                <div class="kpi-val" id="lf-next">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Trend</div>
+                <div class="kpi-val" id="lf-trend">—</div>
+            </div>
+        </div>
+        <div style="margin-bottom:8px;">
+            Trend: <span class="status-badge badge-gray" id="badge-lf">—</span>
+        </div>
+        <div class="chart-legend">
+            <span><span class="legend-dot" style="background:#2980b9;"></span>Actual (kW)</span>
+            <span><span class="legend-dot" style="background:#e67e22; border-top: 2px dashed #e67e22; background: none;"></span>Forecast (kW)</span>
+        </div>
+        <canvas id="lfChart"></canvas>
+        <div class="chart-note">Blue = actual load, orange dashed = forecast</div>
+    </div>
 
+    <!-- Grid Health Index -->
+    <div class="ml-chart-card" id="card-hi">
+        <h3>Grid Health Index (IEC 61000-4-30)</h3>
+        <div class="kpi-row kpi-row-3">
+            <div class="kpi-tile">
+                <div class="kpi-label">Health Score</div>
+                <div class="kpi-val" id="hi-score">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Grade</div>
+                <div class="kpi-val" id="hi-grade">—</div>
+            </div>
+            <div class="kpi-tile">
+                <div class="kpi-label">Status</div>
+                <div class="kpi-val" id="hi-status">—</div>
+            </div>
+        </div>
+        <div style="margin-bottom:10px;">
+            Grade: <span class="status-badge badge-gray" id="badge-hi">—</span>
+        </div>
+        <canvas id="hiChart"></canvas>
+        <div class="chart-note" id="hi-risks">Risk Indicators: —</div>
+    </div>
+
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-const API = 'http://localhost:8001';
-const WS_URL = 'ws://localhost:8001/ws/ml-predictions';
+const ML_WS = API_URL.replace(/^http/, 'ws') + '/ws/ml-predictions';
 const MAX_PTS = 200;
-let isSimulation = false, ws = null;
 
-// Load forecast: two datasets — history + forecast
+// ── Charts ──────────────────────────────────────────────────────────
+// Load forecast: dual-line (actual + forecast)
 const lfChart = new Chart(document.getElementById('lfChart'), {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [
-      { label: 'Actual (kW)', data: [], borderColor: '#2980b9', backgroundColor: '#2980b922', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
-      { label: 'Forecast (kW)', data: [], borderColor: '#e67e22', backgroundColor: '#e67e2222', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
-    ]
-  },
-  options: { animation: false, responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
-    scales: { x: { display: false }, y: { beginAtZero: false } } }
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [
+            { label: 'Actual (kW)',   data: [], borderColor: '#2980b9', backgroundColor: '#2980b922', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+            { label: 'Forecast (kW)', data: [], borderColor: '#e67e22', backgroundColor: '#e67e2222', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+        ]
+    },
+    options: { animation: false, responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { beginAtZero: false } } }
 });
 
-function makeLineChart(id, label, color) {
-  return new Chart(document.getElementById(id), {
+// Health index: single line 0-100
+const hiChart = new Chart(document.getElementById('hiChart'), {
     type: 'line',
-    data: { labels: [], datasets: [{ label, data: [], borderColor: color,
-      backgroundColor: color+'22', borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
-    options: { animation: false, responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { display: false }, y: { min: 0, max: 100 } } }
-  });
-}
-const hiChart = makeLineChart('hiChart', 'Health Score', '#27ae60');
+    data: { labels: [], datasets: [{ label: 'Health Score', data: [],
+        borderColor: '#27ae60', backgroundColor: '#27ae6022', borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
+    options: { animation: false, responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { min: 0, max: 100 } } }
+});
 
-function pushChart(chart, dsIdx, ts, val) {
-  if (dsIdx === 0) chart.data.labels.push(ts);
-  chart.data.datasets[dsIdx].data.push(val);
-  if (chart.data.datasets[0].data.length > MAX_PTS) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(ds => ds.data.length > MAX_PTS && ds.data.shift());
-  }
-  chart.update('none');
-}
-function pushSimple(chart, ts, val) {
-  chart.data.labels.push(ts);
-  chart.data.datasets[0].data.push(val);
-  if (chart.data.labels.length > MAX_PTS) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
-  chart.update('none');
-}
-
-const gradeCls = { Excellent:'bg-success', Good:'bg-info text-dark', Fair:'bg-warning text-dark', Poor:'bg-danger' };
-const statusCls = { Optimal:'text-success', Normal:'text-success', Degraded:'text-warning', Critical:'text-danger' };
-
-function setBadge(id, text, cls) { const el=document.getElementById(id); el.textContent=text; el.className='badge '+(cls||'bg-secondary'); }
-
-function applyEnergy(ef) {
-  const ts = new Date().toLocaleTimeString();
-
-  const lf = ef.load_forecasting || {};
-  document.getElementById('lf-current').textContent = lf.current_load_kw != null ? lf.current_load_kw.toFixed(2) : '—';
-  const next = (lf.hourly_forecast||[])[0];
-  document.getElementById('lf-next').textContent = next != null ? next.toFixed(2) : '—';
-  document.getElementById('lf-trend').textContent = lf.trend || '—';
-  document.getElementById('lf-trend').className = 'fw-bold '+(lf.trend==='increasing'?'text-danger':lf.trend==='decreasing'?'text-success':'text-muted');
-  setBadge('badge-lf', lf.trend||'—', lf.trend==='increasing'?'bg-warning text-dark':'bg-info text-dark');
-  // Push actual load to dataset[0], forecast point to dataset[1]
-  pushChart(lfChart, 0, ts, lf.current_load_kw||0);
-  pushChart(lfChart, 1, ts, next||0);
-
-  const hi = ef.energy_health_index || {};
-  document.getElementById('hi-score').textContent  = hi.health_score != null ? hi.health_score.toFixed(1) : '—';
-  document.getElementById('hi-grade').textContent  = hi.grade || '—';
-  document.getElementById('hi-status').textContent = hi.efficiency_status || '—';
-  document.getElementById('hi-status').className   = 'fw-bold '+(statusCls[hi.efficiency_status]||'text-muted');
-  document.getElementById('hi-risks').textContent  = 'Risks: '+((hi.risk_indicators||[]).join(', ')||'None');
-  setBadge('badge-hi', hi.grade||'—', gradeCls[hi.grade]);
-  pushSimple(hiChart, ts, hi.health_score||0);
-  document.getElementById('card-hi').className = 'card h-100 shadow-sm'+
-    (hi.efficiency_status==='Critical'?' border-danger':hi.efficiency_status==='Degraded'?' border-warning':'');
-}
-
-function getAuthHeader() {
-  const t = localStorage.getItem('access_token');
-  return t ? {Authorization:`Bearer ${t}`} : {};
-}
-
-async function loadHistory() {
-  const sim = isSimulation ? '&is_simulation=true' : '&is_simulation=false';
-  const h = getAuthHeader();
-  try {
-    const [lf, hi] = await Promise.all([
-      fetch(`${API}/api/ml/energy/load-forecast?limit=200${sim}`, {headers:h}).then(r=>r.json()),
-      fetch(`${API}/api/ml/energy/energy-health-index?limit=200${sim}`, {headers:h}).then(r=>r.json()),
-    ]);
-    lfChart.data.labels=[]; lfChart.data.datasets.forEach(ds=>ds.data=[]);
-    hiChart.data.labels=[]; hiChart.data.datasets[0].data=[];
-    for (const d of (lf.data||[])) {
-      const t = new Date(d.timestamp).toLocaleTimeString();
-      const fst = (d.hourly_forecast||[])[0]||0;
-      pushChart(lfChart, 0, t, d.current_load_kw||0);
-      pushChart(lfChart, 1, t, fst);
+function pushLf(ts, actual, forecast) {
+    lfChart.data.labels.push(ts);
+    lfChart.data.datasets[0].data.push(actual);
+    lfChart.data.datasets[1].data.push(forecast);
+    if (lfChart.data.labels.length > MAX_PTS) {
+        lfChart.data.labels.shift();
+        lfChart.data.datasets.forEach(ds => ds.data.shift());
     }
-    for (const d of (hi.data||[])) pushSimple(hiChart, new Date(d.timestamp).toLocaleTimeString(), d.health_score||0);
-  } catch(e) { console.warn('History load failed', e); }
+    lfChart.update('none');
+}
+function pushHi(ts, val) {
+    hiChart.data.labels.push(ts);
+    hiChart.data.datasets[0].data.push(val);
+    if (hiChart.data.labels.length > MAX_PTS) { hiChart.data.labels.shift(); hiChart.data.datasets[0].data.shift(); }
+    hiChart.update('none');
+}
+
+// ── Badge helpers ─────────────────────────────────────────────────────
+function gradeBadge(grade) {
+    const m = { Excellent: 'badge-excellent', Good: 'badge-good', Fair: 'badge-fair', Poor: 'badge-poor' };
+    return m[grade] || 'badge-gray';
+}
+function trendBadge(trend) {
+    if (trend === 'increasing') return 'badge-up';
+    if (trend === 'decreasing') return 'badge-down';
+    return 'badge-stable';
+}
+function setBadge(id, text, cls) {
+    const el = document.getElementById(id);
+    el.textContent = text || '—';
+    el.className = 'status-badge ' + (cls || 'badge-gray');
+}
+
+// ── Apply data ───────────────────────────────────────────────────────
+function applyEnergy(ef) {
+    const ts = new Date().toLocaleTimeString();
+
+    const lf = ef.load_forecasting || {};
+    document.getElementById('lf-current').textContent = lf.current_load_kw != null ? lf.current_load_kw.toFixed(2) : '—';
+    const next = (lf.hourly_forecast || [])[0];
+    document.getElementById('lf-next').textContent  = next != null ? next.toFixed(2) : '—';
+    document.getElementById('lf-trend').textContent = lf.trend || '—';
+    document.getElementById('lf-trend').style.color = lf.trend === 'increasing' ? '#e74c3c' : lf.trend === 'decreasing' ? '#27ae60' : '#666';
+    setBadge('badge-lf', lf.trend || '—', trendBadge(lf.trend));
+    pushLf(ts, lf.current_load_kw || 0, next || 0);
+
+    const hi = ef.energy_health_index || {};
+    document.getElementById('hi-score').textContent  = hi.health_score != null ? hi.health_score.toFixed(1) : '—';
+    document.getElementById('hi-grade').textContent  = hi.grade || '—';
+    document.getElementById('hi-status').textContent = hi.efficiency_status || '—';
+    document.getElementById('hi-status').style.color = hi.efficiency_status === 'Critical' ? '#e74c3c' : hi.efficiency_status === 'Degraded' ? '#f39c12' : '#27ae60';
+    document.getElementById('hi-risks').textContent  = 'Risk Indicators: ' + ((hi.risk_indicators || []).join(', ') || 'None');
+    setBadge('badge-hi', hi.grade || '—', gradeBadge(hi.grade));
+    pushHi(ts, hi.health_score || 0);
+    const cardHi = document.getElementById('card-hi');
+    cardHi.style.borderLeft = hi.efficiency_status === 'Critical' ? '4px solid #e74c3c' : hi.efficiency_status === 'Degraded' ? '4px solid #f39c12' : '';
+}
+
+// ── Load history ─────────────────────────────────────────────────────
+async function loadHistory() {
+    const sim = isSimulatorMode ? '&is_simulation=true' : '&is_simulation=false';
+    const h = authToken ? { Authorization: 'Bearer ' + authToken } : {};
+    try {
+        const [lf, hi] = await Promise.all([
+            fetch(API_URL + '/api/ml/energy/load-forecast?limit=200'         + sim, { headers: h }).then(r => r.json()),
+            fetch(API_URL + '/api/ml/energy/energy-health-index?limit=200'   + sim, { headers: h }).then(r => r.json()),
+        ]);
+        lfChart.data.labels = []; lfChart.data.datasets.forEach(ds => ds.data = []);
+        hiChart.data.labels = []; hiChart.data.datasets[0].data = [];
+        for (const d of (lf.data || [])) {
+            const t = new Date(d.timestamp).toLocaleTimeString();
+            pushLf(t, d.current_load_kw || 0, (d.hourly_forecast || [])[0] || 0);
+        }
+        for (const d of (hi.data || [])) pushHi(new Date(d.timestamp).toLocaleTimeString(), d.health_score || 0);
+    } catch(e) { console.warn('History load failed', e); }
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────
+let ws = null;
+function setWsStatus(state) {
+    const dot = document.getElementById('wsDot');
+    const lbl = document.getElementById('wsLabel');
+    if (state === 'live')       { dot.className = 'ws-dot live';  lbl.textContent = 'Live'; }
+    else if (state === 'error') { dot.className = 'ws-dot error'; lbl.textContent = 'Error'; }
+    else                        { dot.className = 'ws-dot';       lbl.textContent = 'Connecting…'; }
 }
 
 function connectWS() {
-  const sim = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
-  ws = new WebSocket(`${WS_URL}${sim}`);
-  ws.onopen = () => { document.getElementById('wsStatus').textContent='Live'; document.getElementById('wsStatus').className='badge bg-success'; setInterval(()=>ws.readyState===1&&ws.send('ping'),25000); };
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type==='initial_predictions'||msg.type==='ml_update') {
-      applyEnergy(msg.data?.energy_flow||{});
-      document.getElementById('lastUpdated').textContent='Updated: '+new Date().toLocaleTimeString();
-    }
-  };
-  ws.onclose = () => { document.getElementById('wsStatus').textContent='Reconnecting…'; document.getElementById('wsStatus').className='badge bg-warning text-dark'; setTimeout(connectWS,3000); };
-  ws.onerror = () => ws.close();
+    const sim = isSimulatorMode ? '?is_simulation=true' : '?is_simulation=false';
+    ws = new WebSocket(ML_WS + sim);
+    ws.onopen  = () => { setWsStatus('live'); setInterval(() => ws.readyState === 1 && ws.send('ping'), 25000); };
+    ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'initial_predictions' || msg.type === 'ml_update') {
+            applyEnergy(msg.data?.energy_flow || {});
+            document.getElementById('wsUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        }
+    };
+    ws.onclose = () => { setWsStatus('connecting'); setTimeout(connectWS, 3000); };
+    ws.onerror = () => { setWsStatus('error'); ws.close(); };
 }
 
-document.getElementById('simToggle').addEventListener('change', (e) => { isSimulation=e.target.checked; if(ws)ws.close(); loadHistory().then(connectWS); });
+// ── Init ──────────────────────────────────────────────────────────────
+function onDataSourceChange(isSimMode, simId) {
+    if (ws) ws.close();
+    loadHistory().then(connectWS);
+}
+
 loadHistory().then(connectWS);
 </script>
 {% endblock %}

@@ -633,27 +633,31 @@ async function handleRun() {
     btn.textContent = '⏹  Stop Grid';
     btn.classList.add('running');
 
-    if (mode === 'simulation') {
-        const scenario = document.getElementById('sim-scenario').value;
-        setStatus('Streaming: ' + scenario, '#f39c12');
-        logEvt('Live stream started — ' + scenario, 'info');
-        connectMlWs(true);   // switch ML WS to simulation filter
-        startElapsedTimer();
+    const isSim = (mode === 'simulation');
+    const scenario = isSim ? document.getElementById('sim-scenario').value : 'normal';
+    const simFlag  = isSim ? 'true' : 'false';
 
-        abortCtrl = new AbortController();
-        fetch(API_URL + '/api/grid/generate-simple?num_points=500&is_simulation=true&scenario=' + scenario, {
-            signal: abortCtrl.signal
-        })
-            .then(r => r.json())
-            .then(d => {
-                logEvt('Stream ended — ' + (d.count || 0) + ' points inserted', 'success');
-                stopGrid();
-            })
-            .catch(e => { if (e.name !== 'AbortError') { logEvt('Fetch error: ' + e.message, 'error'); stopGrid(); } });
+    if (isSim) {
+        setStatus('Streaming: ' + scenario, '#f39c12');
+        logEvt('Simulation stream started — ' + scenario, 'info');
+        connectMlWs(true);
     } else {
-        setStatus('Live monitoring active', '#27ae60');
-        logEvt('Real-time monitoring started', 'success');
+        setStatus('Streaming: real-time', '#27ae60');
+        logEvt('Real-time stream started', 'info');
+        connectMlWs(false);
     }
+    startElapsedTimer();
+
+    abortCtrl = new AbortController();
+    const url = API_URL + '/api/grid/generate-simple?num_points=500&is_simulation=' + simFlag + '&scenario=' + scenario;
+    logEvt('Calling: ' + url, 'info');
+    fetch(url, { signal: abortCtrl.signal })
+        .then(r => r.json())
+        .then(d => {
+            logEvt('Stream ended — ' + (d.count || 0) + ' points inserted', 'success');
+            stopGrid();
+        })
+        .catch(e => { if (e.name !== 'AbortError') { logEvt('Fetch error: ' + e.message, 'error'); stopGrid(); } });
 }
 
 function stopGrid() {

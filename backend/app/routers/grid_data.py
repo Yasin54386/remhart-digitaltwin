@@ -395,16 +395,19 @@ async def stop_live_stream():
 @router.get("/generate-simple")
 async def generate_test_data_simple(
     request: Request,
-    num_points: int = Query(default=3600, ge=1, le=3600),
+    num_points: int = Query(default=500, ge=1, le=3600),
     scenario: str = Query(default="normal"),
     is_simulation: bool = Query(default=True),
-    db: Session = Depends(get_db)
 ):
     """
-    Continuously stream grid data at 1-second intervals, system-wide broadcast.
-    is_simulation=true  → data appears in Simulation mode on all dashboards.
-    is_simulation=false → data appears in Real-time mode on all dashboards.
-    Stops when stop endpoint called, client disconnects, or num_points reached.
+    Stream grid data at 1-second intervals, inserting each point to DB and
+    broadcasting system-wide (grid-data WS + ML predictions WS).
+    is_simulation=true  → Simulation channel on all dashboards.
+    is_simulation=false → Real-time channel on all dashboards.
+    Stops when client disconnects or num_points reached.
+
+    Each iteration opens a fresh DB session and closes it before the async
+    sleep so that SQLAlchemy sync sessions are never held across await points.
     """
     global _stream_active
     _stream_active = True
@@ -427,31 +430,40 @@ async def generate_test_data_simple(
                 force_anomaly=should_force_anomaly(count)
             )
 
-            # Persist directly so we can set is_simulation correctly
-            dt_entry = DateTimeTable(
-                timestamp=dp["timestamp"],
-                is_simulation=is_simulation
-            )
-            db.add(dt_entry)
-            db.flush()
-
             v  = dp["voltage"]
             i  = dp["current"]
             f  = dp["frequency"]
             ap = dp["active_power"]
             rp = dp["reactive_power"]
 
-            db.add(VoltageTable(timestamp_id=dt_entry.id, **v))
-            db.add(CurrentTable(timestamp_id=dt_entry.id, **i))
-            db.add(FrequencyTable(timestamp_id=dt_entry.id, **f))
-            db.add(ActivePowerTable(timestamp_id=dt_entry.id, **ap))
-            db.add(ReactivePowerTable(timestamp_id=dt_entry.id, **rp))
-            db.commit()
+            # Fresh session per point — avoids async session corruption
+            dt_id = None
+            db = SessionLocal()
+            try:
+                dt_entry = DateTimeTable(
+                    timestamp=dp["timestamp"],
+                    is_simulation=is_simulation
+                )
+                db.add(dt_entry)
+                db.flush()
+                dt_id = dt_entry.id
+
+                db.add(VoltageTable(timestamp_id=dt_id, **v))
+                db.add(CurrentTable(timestamp_id=dt_id, **i))
+                db.add(FrequencyTable(timestamp_id=dt_id, **f))
+                db.add(ActivePowerTable(timestamp_id=dt_id, **ap))
+                db.add(ReactivePowerTable(timestamp_id=dt_id, **rp))
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
 
             # Broadcast raw grid data to all /ws/grid-data clients
             await broadcast_new_data({
-                "id":            dt_entry.id,
-                "timestamp":     dt_entry.timestamp.isoformat(),
+                "id":            dt_id,
+                "timestamp":     dp["timestamp"].isoformat(),
                 "voltage":       v,
                 "current":       i,
                 "frequency":     {"value": f["frequency_value"]},
@@ -461,7 +473,7 @@ async def generate_test_data_simple(
             })
 
             # Trigger ML inference + broadcast to /ws/ml-predictions clients
-            asyncio.create_task(_run_ml_and_broadcast(dt_entry.id, is_simulation))
+            asyncio.create_task(_run_ml_and_broadcast(dt_id, is_simulation))
 
             count += 1
             await asyncio.sleep(1)
@@ -473,7 +485,6 @@ async def generate_test_data_simple(
         }
 
     except Exception as e:
-        db.rollback()
         return {"success": False, "error": str(e)}
     finally:
         _stream_active = False

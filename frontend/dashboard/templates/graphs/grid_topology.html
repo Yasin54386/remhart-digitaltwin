@@ -641,7 +641,7 @@ async function handleRun() {
         startElapsedTimer();
 
         abortCtrl = new AbortController();
-        fetch(API_URL + '/api/grid/generate-simple?num_points=3600&is_simulation=true&scenario=' + scenario, {
+        fetch(API_URL + '/api/grid/generate-simple?num_points=500&is_simulation=true&scenario=' + scenario, {
             signal: abortCtrl.signal
         })
             .then(r => r.json())
@@ -662,8 +662,6 @@ function stopGrid() {
     btn.textContent = '▶  Start Grid';
     btn.classList.remove('running');
     setStatus('Idle', '#4a7a88');
-    // Signal server to stop the stream loop
-    fetch(API_URL + '/api/grid/live-stream/stop').catch(() => {});
     connectMlWs(false);   // revert ML WS to real-time filter
     if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
     if (progTimer) { clearInterval(progTimer); progTimer = null; }

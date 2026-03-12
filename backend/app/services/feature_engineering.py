@@ -376,7 +376,15 @@ class FeatureEngineer:
 
         Frec = frequency.frequency_value if frequency else 50.0
 
-        # Power factor total (FP_T)
+        # Per-phase power factors: FP_X = P_X / sqrt(P_X² + Q_X²)
+        def _pf(p, q):
+            s = math.sqrt(p ** 2 + q ** 2)
+            return p / s if s > 0 else 0.9
+        FP_A = _pf(P_A, Q_A)
+        FP_B = _pf(P_B, Q_B)
+        FP_C = _pf(P_C, Q_C)
+
+        # Total power factor: FP_T = P_T / S_T (standard definition, range 0-1)
         S_T = math.sqrt(P_T ** 2 + Q_T ** 2) if (P_T != 0 or Q_T != 0) else 0.0001
         FP_T = P_T / S_T if S_T > 0 else 0.9
 
@@ -415,16 +423,24 @@ class FeatureEngineer:
         if ts:
             try:
                 hour = ts.hour
-                is_workday = int(ts.weekday() < 5)
+                day_of_week = ts.weekday()   # 0=Monday … 6=Sunday
+                day_of_month = ts.day
+                month = ts.month
+                is_workday = int(day_of_week < 5)
+                is_weekend = int(day_of_week >= 5)
             except Exception:
-                hour = 0
-                is_workday = 1
+                hour = 0; day_of_week = 0; day_of_month = 1; month = 1
+                is_workday = 1; is_weekend = 0
         else:
-            hour = 0
-            is_workday = 1
+            hour = 0; day_of_week = 0; day_of_month = 1; month = 1
+            is_workday = 1; is_weekend = 0
 
         hour_sin = math.sin(2 * math.pi * hour / 24.0)
         hour_cos = math.cos(2 * math.pi * hour / 24.0)
+        dayofweek_sin = math.sin(2 * math.pi * day_of_week / 7.0)
+        dayofweek_cos = math.cos(2 * math.pi * day_of_week / 7.0)
+        # Public holidays are unknown without a calendar; default to 0
+        is_public_holiday = 0
 
         # Active power lag features (history indices assume ~1-hour sampling)
         ap_hist = list(self.history['active_power'])
@@ -461,16 +477,26 @@ class FeatureEngineer:
             'I_A': I_A, 'I_B': I_B, 'I_C': I_C,
             'P_A': P_A, 'P_B': P_B, 'P_C': P_C,
             'Q_A': Q_A, 'Q_B': Q_B, 'Q_C': Q_C,
-            'P_T': P_T, 'Q_T': Q_T, 'FP_T': FP_T, 'Frec': Frec,
+            'P_T': P_T, 'Q_T': Q_T, 'Frec': Frec,
+            # Per-phase power factors: P_X / sqrt(P_X² + Q_X²)
+            'FP_A': FP_A, 'FP_B': FP_B, 'FP_C': FP_C,
+            # Total power factor: P_T / sqrt(P_T² + Q_T²), range [0, 1]
+            'FP_T': FP_T,
             # Derived voltage features (voltage anomaly model)
             'v_avg': v_avg,
             'vuf_pct': vuf_pct,
             'v_stability_delta': v_stability_delta,
             'v_ab_dev': v_ab_dev, 'v_bc_dev': v_bc_dev, 'v_ac_dev': v_ac_dev,
             'v_avg_roll_mean': v_avg_roll_mean, 'v_avg_roll_std': v_avg_roll_std,
-            # Time features
-            'hour': hour, 'is_workday': is_workday,
+            # Time features (full set for load forecasting model)
+            'hour': hour, 'hour_of_day': hour,
+            'day_of_week': day_of_week,
+            'day_of_month': day_of_month,
+            'month': month,
+            'is_workday': is_workday, 'is_weekend': is_weekend,
+            'is_public_holiday': is_public_holiday,
             'hour_sin': hour_sin, 'hour_cos': hour_cos,
+            'dayofweek_sin': dayofweek_sin, 'dayofweek_cos': dayofweek_cos,
             # Load lag features (load forecasting model)
             'load_lag_1h': load_lag_1h,
             'load_lag_24h': load_lag_24h,

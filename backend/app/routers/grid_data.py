@@ -404,14 +404,18 @@ async def generate_test_data_simple(
     broadcasting system-wide (grid-data WS + ML predictions WS).
     is_simulation=true  → Simulation channel on all dashboards.
     is_simulation=false → Real-time channel on all dashboards.
-    Stops when client disconnects or num_points reached.
-
-    Each iteration opens a fresh DB session and closes it before the async
-    sleep so that SQLAlchemy sync sessions are never held across await points.
+    Stops when _stream_active flag cleared or num_points reached.
     """
+    import logging
+    import traceback
+    log = logging.getLogger("generate_simple")
+    log.setLevel(logging.DEBUG)
+
     global _stream_active
     _stream_active = True
     count = 0
+
+    log.info(f"[generate-simple] START — num_points={num_points} scenario={scenario} is_simulation={is_simulation}")
 
     def should_force_anomaly(n: int) -> bool:
         pos = n % 60
@@ -423,20 +427,26 @@ async def generate_test_data_simple(
 
     try:
         while _stream_active and count < num_points:
-            if await request.is_disconnected():
-                break
+            log.debug(f"[generate-simple] iteration {count+1}/{num_points}")
 
-            dp = grid_generator.generate_single_datapoint(
-                force_anomaly=should_force_anomaly(count)
-            )
+            # ── Generate data point ──────────────────────────────────
+            try:
+                dp = grid_generator.generate_single_datapoint(
+                    force_anomaly=should_force_anomaly(count)
+                )
+                log.debug(f"[generate-simple] generated dp timestamp={dp['timestamp']}")
+            except Exception as e:
+                log.error(f"[generate-simple] data generation failed: {e}\n{traceback.format_exc()}")
+                break
 
             v  = dp["voltage"]
             i  = dp["current"]
             f  = dp["frequency"]
             ap = dp["active_power"]
             rp = dp["reactive_power"]
+            log.debug(f"[generate-simple] data fields — voltage_avg={v.get('average')} freq={f.get('frequency_value')} power_total={ap.get('total')}")
 
-            # Fresh session per point — avoids async session corruption
+            # ── DB insert (fresh session per point) ──────────────────
             dt_id = None
             db = SessionLocal()
             try:
@@ -447,6 +457,7 @@ async def generate_test_data_simple(
                 db.add(dt_entry)
                 db.flush()
                 dt_id = dt_entry.id
+                log.debug(f"[generate-simple] DateTimeTable flushed id={dt_id}")
 
                 db.add(VoltageTable(timestamp_id=dt_id, **v))
                 db.add(CurrentTable(timestamp_id=dt_id, **i))
@@ -454,30 +465,41 @@ async def generate_test_data_simple(
                 db.add(ActivePowerTable(timestamp_id=dt_id, **ap))
                 db.add(ReactivePowerTable(timestamp_id=dt_id, **rp))
                 db.commit()
-            except Exception:
+                log.info(f"[generate-simple] ✓ committed point #{count+1} id={dt_id}")
+            except Exception as e:
                 db.rollback()
-                raise
+                log.error(f"[generate-simple] DB insert FAILED at point #{count+1}: {e}\n{traceback.format_exc()}")
+                db.close()
+                break
             finally:
                 db.close()
 
-            # Broadcast raw grid data to all /ws/grid-data clients
-            await broadcast_new_data({
-                "id":            dt_id,
-                "timestamp":     dp["timestamp"].isoformat(),
-                "voltage":       v,
-                "current":       i,
-                "frequency":     {"value": f["frequency_value"]},
-                "active_power":  ap,
-                "reactive_power": rp,
-                "is_simulation": is_simulation,
-            })
+            # ── WebSocket broadcast ───────────────────────────────────
+            try:
+                await broadcast_new_data({
+                    "id":            dt_id,
+                    "timestamp":     dp["timestamp"].isoformat(),
+                    "voltage":       v,
+                    "current":       i,
+                    "frequency":     {"value": f["frequency_value"]},
+                    "active_power":  ap,
+                    "reactive_power": rp,
+                    "is_simulation": is_simulation,
+                })
+                log.debug(f"[generate-simple] broadcast_new_data sent for id={dt_id}")
+            except Exception as e:
+                log.warning(f"[generate-simple] broadcast_new_data failed (non-fatal): {e}")
 
-            # Trigger ML inference + broadcast to /ws/ml-predictions clients
-            asyncio.create_task(_run_ml_and_broadcast(dt_id, is_simulation))
+            # ── ML inference (background task) ───────────────────────
+            try:
+                asyncio.create_task(_run_ml_and_broadcast(dt_id, is_simulation))
+            except Exception as e:
+                log.warning(f"[generate-simple] create_task ML failed (non-fatal): {e}")
 
             count += 1
             await asyncio.sleep(1)
 
+        log.info(f"[generate-simple] DONE — inserted {count} points")
         return {
             "success": True,
             "count": count,
@@ -485,6 +507,7 @@ async def generate_test_data_simple(
         }
 
     except Exception as e:
+        log.error(f"[generate-simple] OUTER exception: {e}\n{traceback.format_exc()}")
         return {"success": False, "error": str(e)}
     finally:
         _stream_active = False

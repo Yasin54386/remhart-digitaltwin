@@ -99,6 +99,7 @@
 
     .progress-wrap { background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; margin-top: 8px; overflow: hidden; display: none; }
     .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #27ae60, #1a8c99); border-radius: 4px; transition: width 0.5s; }
+    @keyframes pulse-bar { 0%,100%{opacity:1} 50%{opacity:0.5} }
     .run-timer { color: #7a9eaa; font-size: 11px; text-align: center; margin-top: 5px; display: none; }
 
     /* Phase bars */
@@ -531,8 +532,9 @@
                     <option value="frequency_drift">Frequency Drift</option>
                     <option value="mixed">Mixed Anomalies</option>
                 </select>
-                <div class="ctrl-label">Duration (seconds)</div>
-                <input type="number" class="ctrl-input" id="sim-dur" value="60" min="10" max="600" step="10"/>
+                <div style="color:#4a6a7a;font-size:10px;margin-top:8px;">
+                    Inserts 1 data point/sec continuously.<br>Press Stop to end the stream.
+                </div>
             </div>
         </div>
 
@@ -632,32 +634,21 @@ async function handleRun() {
     btn.classList.add('running');
 
     if (mode === 'simulation') {
-        const dur      = parseInt(document.getElementById('sim-dur').value) || 60;
         const scenario = document.getElementById('sim-scenario').value;
-        setStatus('Running: ' + scenario, '#f39c12');
-        logEvt('Simulation started — ' + scenario + ', ' + dur + 's', 'info');
-        startProgress(dur);
+        setStatus('Streaming: ' + scenario, '#f39c12');
+        logEvt('Live stream started — ' + scenario, 'info');
+        startElapsedTimer();
 
-        const simName = 'GridTopology_' + new Date().toISOString().slice(0,19).replace('T','_');
-        const request = {
-            name: simName,
-            scenario_type: scenario,
-            parameters: { num_points: dur, interval: 1 }
-        };
         abortCtrl = new AbortController();
-        fetch(API_URL + '/api/simulator/run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-            body: JSON.stringify(request),
+        fetch(API_URL + '/api/grid/generate-simple?num_points=3600&scenario=' + scenario, {
             signal: abortCtrl.signal
         })
             .then(r => r.json())
             .then(d => {
-                if (d.success) logEvt('Simulation done — ' + (d.total_points || dur) + ' points', 'success');
-                else logEvt('Sim error: ' + (d.detail || d.message || 'unknown'), 'error');
+                logEvt('Stream ended — ' + (d.count || 0) + ' points inserted', 'success');
                 stopGrid();
             })
-            .catch(e => { if (e.name !== 'AbortError') { logEvt('Error: ' + e.message, 'error'); stopGrid(); } });
+            .catch(e => { if (e.name !== 'AbortError') { logEvt('Fetch error: ' + e.message, 'error'); stopGrid(); } });
     } else {
         setStatus('Live monitoring active', '#27ae60');
         logEvt('Real-time monitoring started', 'success');
@@ -670,11 +661,13 @@ function stopGrid() {
     btn.textContent = '▶  Start Grid';
     btn.classList.remove('running');
     setStatus('Idle', '#4a7a88');
+    // Signal server to stop the stream loop
+    fetch(API_URL + '/api/grid/live-stream/stop').catch(() => {});
     if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
     if (progTimer) { clearInterval(progTimer); progTimer = null; }
     document.getElementById('progWrap').style.display = 'none';
     document.getElementById('runTimer').style.display = 'none';
-    logEvt('Grid stopped', 'warn');
+    logEvt('Stream stopped', 'warn');
 }
 
 function setStatus(msg, color) {
@@ -683,19 +676,20 @@ function setStatus(msg, color) {
     el.style.color = color;
 }
 
-function startProgress(total) {
+function startElapsedTimer() {
     const t0 = Date.now();
     document.getElementById('progWrap').style.display = 'block';
     document.getElementById('runTimer').style.display = 'block';
+    document.getElementById('progFill').style.width = '100%';
+    document.getElementById('progFill').style.animation = 'pulse-bar 2s ease-in-out infinite';
+    let pts = 0;
     progTimer = setInterval(() => {
-        const elapsed = (Date.now() - t0) / 1000;
-        const pct = Math.min(100, (elapsed / total) * 100);
-        document.getElementById('progFill').style.width = pct + '%';
-        const rem = Math.max(0, total - Math.floor(elapsed));
+        pts++;
+        const elapsed = Math.floor((Date.now() - t0) / 1000);
+        const m = Math.floor(elapsed / 60), s = elapsed % 60;
         document.getElementById('runTimer').textContent =
-            Math.floor(elapsed) + 's / ' + total + 's  (' + rem + 's left)';
-        if (elapsed >= total) clearInterval(progTimer);
-    }, 500);
+            (m > 0 ? m + 'm ' : '') + s + 's  —  ~' + pts + ' pts inserted';
+    }, 1000);
 }
 
 // ── WebSockets ────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ Author: REMHART Team
 Date: 2025
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import List, Optional
@@ -33,6 +33,9 @@ from app.services.data_generator import grid_generator
 from app.routers.websocket_router import manager, broadcast_new_data, broadcast_ml_predictions
 
 router = APIRouter()
+
+# Stream control flag — set False to stop a running generate-simple stream
+_stream_active: bool = False
 
 
 
@@ -381,58 +384,71 @@ async def generate_test_data(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error generating data: {str(e)}")
     
+@router.get("/live-stream/stop")
+async def stop_live_stream():
+    """Stop a running generate-simple stream."""
+    global _stream_active
+    _stream_active = False
+    return {"success": True, "message": "Stream stop signal sent"}
+
+
 @router.get("/generate-simple")
 async def generate_test_data_simple(
-    num_points: int = Query(default=100, ge=1, le=1000),
+    request: Request,
+    num_points: int = Query(default=3600, ge=1, le=3600),
     scenario: str = Query(default="normal"),
     db: Session = Depends(get_db)
 ):
     """
-    Generate test data by calling add_grid_data for each point.
-    This ensures all data goes through the same pipeline.
+    Continuously stream real-time grid data at 1-second intervals.
+    Broadcasts every point system-wide via WebSocket.
+    Stops when: Stop endpoint is called, client disconnects, or num_points reached.
     """
+    global _stream_active
+    _stream_active = True
+    count = 0
+    mock_user = {"sub": "system", "user_id": 0, "role": "admin"}
+
+    # Scenario anomaly windows (repeat every 60 points for ongoing streams)
+    def should_force_anomaly(n: int) -> bool:
+        pos = n % 60
+        if scenario == "voltage_sag":      return 20 <= pos <= 30
+        if scenario == "overcurrent":      return 15 <= pos <= 35
+        if scenario == "frequency_drift":  return 10 <= pos <= 40
+        if scenario == "mixed":            return pos % 5 == 0
+        return False
+
     try:
-        from app.services.data_generator import grid_generator
-        from app.schemas.grid_data import GridDataPoint
-        import asyncio
-        
-        # Generate data points
-        if scenario == "normal":
-            data_points = grid_generator.generate_time_series(num_points=num_points)
-        else:
-            data_points = grid_generator.generate_scenario_data(scenario=scenario)
-        
-        count = 0
-        
-        # Create a mock user for authentication (since this is a test endpoint)
-        mock_user = {"sub": "system", "user_id": 0, "role": "admin"}
-        
-        # Process each data point through the standard pipeline
-        for dp in data_points:
-            # Convert to GridDataPoint schema
-            grid_data = GridDataPoint(
-                timestamp=dp["timestamp"],
-                voltage=dp["voltage"],
-                current=dp["current"],
-                frequency=dp["frequency"],
-                active_power=dp["active_power"],
-                reactive_power=dp["reactive_power"]
+        while _stream_active and count < num_points:
+            if await request.is_disconnected():
+                break
+
+            dp = grid_generator.generate_single_datapoint(
+                force_anomaly=should_force_anomaly(count)
             )
-            
-            # Call the standard add_grid_data function
-            await add_grid_data(grid_data, db, mock_user)
-            
+
+            await add_grid_data(
+                GridDataPoint(
+                    timestamp=dp["timestamp"],
+                    voltage=dp["voltage"],
+                    current=dp["current"],
+                    frequency=dp["frequency"],
+                    active_power=dp["active_power"],
+                    reactive_power=dp["reactive_power"]
+                ),
+                db,
+                mock_user
+            )
             count += 1
-            
-            # Wait 1 second between insertions for real-time streaming effect
             await asyncio.sleep(1)
-        
+
         return {
             "success": True,
-            "message": f"Generated {count} data points via standard pipeline",
             "count": count,
-            "note": "All data was inserted and broadcasted through add_grid_data"
+            "message": f"Stream ended: {count} points inserted"
         }
-        
+
     except Exception as e:
         return {"success": False, "error": str(e)}
+    finally:
+        _stream_active = False

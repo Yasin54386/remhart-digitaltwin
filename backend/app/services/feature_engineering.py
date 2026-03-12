@@ -393,17 +393,19 @@ class FeatureEngineer:
         v_ac_dev = abs(volt_A - volt_C)
 
         # Voltage stability delta (abs change from last recorded average)
+        # history[-1] = current (just appended by _update_history), [-2] = previous
         v_avg_history = list(self.history['voltage_avg'])
-        v_stability_delta = abs(v_avg - v_avg_history[-1]) if len(v_avg_history) >= 1 else 0.0
+        v_stability_delta = abs(v_avg - v_avg_history[-2]) if len(v_avg_history) >= 2 else 0.0
 
-        # Rolling stats on v_avg (window = 6, as in the training script)
+        # Rolling stats on v_avg (window = 6, min_periods=1 matching trainer)
+        # Trainer uses pandas .std() which defaults to ddof=1 (unbiased)
         if len(v_avg_history) >= 6:
             recent6 = v_avg_history[-6:]
             v_avg_roll_mean = float(np.mean(recent6))
-            v_avg_roll_std = float(np.std(recent6))
+            v_avg_roll_std = float(np.std(recent6, ddof=1))
         elif len(v_avg_history) >= 2:
             v_avg_roll_mean = float(np.mean(v_avg_history))
-            v_avg_roll_std = float(np.std(v_avg_history))
+            v_avg_roll_std = float(np.std(v_avg_history, ddof=1))
         else:
             v_avg_roll_mean = v_avg
             v_avg_roll_std = 0.0
@@ -441,9 +443,10 @@ class FeatureEngineer:
         load_roll_mean_24h = float(np.mean(win24)) if win24 else P_T
         load_roll_min_24h = float(np.min(win24)) if win24 else P_T
         load_roll_max_24h = float(np.max(win24)) if win24 else P_T
-        load_roll_std_3h = float(np.std(win3)) if len(win3) > 1 else 0.0
-        load_roll_std_6h = float(np.std(win6)) if len(win6) > 1 else 0.0
-        load_roll_std_24h = float(np.std(win24)) if len(win24) > 1 else 0.0
+        # Trainer uses pandas .std() which defaults to ddof=1 (unbiased estimator)
+        load_roll_std_3h = float(np.std(win3, ddof=1)) if len(win3) > 1 else 0.0
+        load_roll_std_6h = float(np.std(win6, ddof=1)) if len(win6) > 1 else 0.0
+        load_roll_std_24h = float(np.std(win24, ddof=1)) if len(win24) > 1 else 0.0
 
         # Reactive power and PF lag features
         q_hist = list(self.history['reactive_power'])

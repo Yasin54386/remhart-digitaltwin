@@ -159,18 +159,26 @@ const MAX_PTS = 200;
 
 // ── Charts ──────────────────────────────────────────────────────────
 function makeChart(id, label, color, yMin, yMax) {
-    const opts = {
-        animation: false, responsive: true, maintainAspectRatio: true,
-        plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { beginAtZero: false } }
+    const xAxis = {
+        display: true,
+        ticks: {
+            callback: function(val, index) { return index % 20 === 0 ? this.getLabelForValue(val) : ''; },
+            maxRotation: 0,
+            font: { size: 9 }
+        },
+        grid: { display: false }
     };
-    if (yMin !== undefined) opts.scales.y = { min: yMin, max: yMax };
+    const yAxis = (yMin !== undefined) ? { min: yMin, max: yMax } : { beginAtZero: false };
     return new Chart(document.getElementById(id), {
         type: 'line',
         data: { labels: [], datasets: [{ label, data: [],
             borderColor: color, backgroundColor: color + '22',
             borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
-        options: opts
+        options: {
+            animation: false, responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: { x: xAxis, y: yAxis }
+        }
     });
 }
 
@@ -240,6 +248,12 @@ async function loadHistory() {
         adChart.data.labels = []; adChart.data.datasets[0].data = [];
         for (const d of (vaData.data || [])) pushChart(vaChart, new Date(d.timestamp).toLocaleTimeString(), d.anomaly_score ?? 0);
         for (const d of (adData.data || [])) pushChart(adChart, new Date(d.timestamp).toLocaleTimeString(), d.anomaly_probability ?? 0);
+        // Populate KPI tiles with latest data point
+        const latestVa = (vaData.data || []).slice(-1)[0] || {};
+        const latestAd = (adData.data || []).slice(-1)[0] || {};
+        if (latestVa.anomaly_score != null || latestAd.anomaly_probability != null) {
+            applyMonitoring({ voltage_anomaly: latestVa, anomaly_detection: latestAd });
+        }
     } catch(e) { console.warn('History load failed', e); }
 }
 

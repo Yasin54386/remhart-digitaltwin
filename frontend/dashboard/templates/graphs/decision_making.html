@@ -170,6 +170,16 @@
 const ML_WS = API_URL.replace(/^http/, 'ws') + '/ws/ml-predictions';
 const MAX_PTS = 200;
 
+const xAxisOpts = {
+    display: true,
+    ticks: {
+        callback: function(val, index) { return index % 20 === 0 ? this.getLabelForValue(val) : ''; },
+        maxRotation: 0,
+        font: { size: 9 }
+    },
+    grid: { display: false }
+};
+
 // ── Charts ──────────────────────────────────────────────────────────
 // Reactive Q: two lines — actual + predicted
 const rqChart = new Chart(document.getElementById('rqChart'), {
@@ -180,7 +190,7 @@ const rqChart = new Chart(document.getElementById('rqChart'), {
     ]},
     options: { animation: false, responsive: true, maintainAspectRatio: true,
         plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { beginAtZero: false } } }
+        scales: { x: xAxisOpts, y: { beginAtZero: false } } }
 });
 
 // PF: three lines — current PF + predicted PF + target 0.95
@@ -193,7 +203,7 @@ const pfChart = new Chart(document.getElementById('pfChart'), {
     ]},
     options: { animation: false, responsive: true, maintainAspectRatio: true,
         plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { min: 0.5, max: 1.05 } } }
+        scales: { x: xAxisOpts, y: { min: 0.5, max: 1.05 } } }
 });
 
 function pushRq(ts, actual, predicted) {
@@ -268,6 +278,12 @@ async function loadHistory() {
         pfChart.data.labels = []; pfChart.data.datasets.forEach(ds => ds.data = []);
         for (const d of (rq.data || [])) pushRq(new Date(d.timestamp).toLocaleTimeString(), d.current_q_kvar || 0, d.predicted_q_kvar || 0);
         for (const d of (pf.data || [])) pushPf(new Date(d.timestamp).toLocaleTimeString(), d.current_pf || 0, d.predicted_pf || 0);
+        // Populate KPI tiles with latest data point
+        const latestRq = (rq.data || []).slice(-1)[0] || {};
+        const latestPf = (pf.data || []).slice(-1)[0] || {};
+        if (latestRq.current_q_kvar != null || latestPf.current_pf != null) {
+            applyDecision({ reactive_q_forecast: latestRq, pf_forecast: latestPf });
+        }
     } catch(e) { console.warn('History load failed', e); }
 }
 

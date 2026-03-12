@@ -210,7 +210,19 @@ function makeChart(id, label, color) {
             borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
         options: { animation: false, responsive: true, maintainAspectRatio: true,
             plugins: { legend: { display: false } },
-            scales: { x: { display: false }, y: { beginAtZero: true } } }
+            scales: {
+                x: {
+                    display: true,
+                    ticks: {
+                        callback: function(val, index) { return index % 20 === 0 ? this.getLabelForValue(val) : ''; },
+                        maxRotation: 0,
+                        font: { size: 9 }
+                    },
+                    grid: { display: false }
+                },
+                y: { beginAtZero: true }
+            }
+        }
     });
 }
 
@@ -308,6 +320,14 @@ async function loadHistory() {
         for (const d of (ov.data || [])) push(ovChart, new Date(d.timestamp).toLocaleTimeString(), d.current_load_pct || 0);
         for (const d of (pq.data || [])) push(pqChart, new Date(d.timestamp).toLocaleTimeString(), d.pqi_score || 0);
         for (const d of (vs.data || [])) push(vsChart, new Date(d.timestamp).toLocaleTimeString(), (d.sag_probability || 0) * 100);
+        // Populate KPI tiles with latest data point
+        const latestEf = (ef.data || []).slice(-1)[0] || {};
+        const latestOv = (ov.data || []).slice(-1)[0] || {};
+        const latestPq = (pq.data || []).slice(-1)[0] || {};
+        const latestVs = (vs.data || []).slice(-1)[0] || {};
+        if (latestEf.failure_probability != null || latestOv.risk_level || latestPq.pqi_score != null || latestVs.sag_probability != null) {
+            applyMaintenance({ equipment_failure: latestEf, overload_risk: latestOv, power_quality_index: latestPq, voltage_sag: latestVs });
+        }
     } catch(e) { console.warn('History load failed', e); }
 }
 

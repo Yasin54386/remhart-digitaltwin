@@ -163,6 +163,16 @@ const ML_WS = API_URL.replace(/^http/, 'ws') + '/ws/ml-predictions';
 const MAX_PTS = 200;
 
 // ── Charts ──────────────────────────────────────────────────────────
+const xAxisOpts = {
+    display: true,
+    ticks: {
+        callback: function(val, index) { return index % 20 === 0 ? this.getLabelForValue(val) : ''; },
+        maxRotation: 0,
+        font: { size: 9 }
+    },
+    grid: { display: false }
+};
+
 // Load forecast: dual-line (actual + forecast)
 const lfChart = new Chart(document.getElementById('lfChart'), {
     type: 'line',
@@ -175,7 +185,7 @@ const lfChart = new Chart(document.getElementById('lfChart'), {
     },
     options: { animation: false, responsive: true, maintainAspectRatio: true,
         plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { beginAtZero: false } } }
+        scales: { x: xAxisOpts, y: { beginAtZero: false } } }
 });
 
 // Health index: single line 0-100
@@ -185,7 +195,7 @@ const hiChart = new Chart(document.getElementById('hiChart'), {
         borderColor: '#27ae60', backgroundColor: '#27ae6022', borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
     options: { animation: false, responsive: true, maintainAspectRatio: true,
         plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { min: 0, max: 100 } } }
+        scales: { x: xAxisOpts, y: { min: 0, max: 100 } } }
 });
 
 function pushLf(ts, actual, forecast) {
@@ -262,6 +272,12 @@ async function loadHistory() {
             pushLf(t, d.current_load_kw || 0, (d.hourly_forecast || [])[0] || 0);
         }
         for (const d of (hi.data || [])) pushHi(new Date(d.timestamp).toLocaleTimeString(), d.health_score || 0);
+        // Populate KPI tiles with latest data point
+        const latestLf = (lf.data || []).slice(-1)[0] || {};
+        const latestHi = (hi.data || []).slice(-1)[0] || {};
+        if (latestLf.current_load_kw != null || latestHi.health_score != null) {
+            applyEnergy({ load_forecasting: latestLf, energy_health_index: latestHi });
+        }
     } catch(e) { console.warn('History load failed', e); }
 }
 

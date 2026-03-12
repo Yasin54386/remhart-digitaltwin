@@ -20,4 +20,7 @@
     <a href="{% url 'dashboard:decision_making' %}" {% if request.resolver_match.url_name == 'decision_making' %}class="active"{% endif %}>
         Decision Making
     </a>
+    <a href="{% url 'dashboard:grid_topology' %}" {% if request.resolver_match.url_name == 'grid_topology' %}class="active"{% endif %}>
+        Grid Topology
+    </a>
 </div>

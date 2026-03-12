@@ -1,0 +1,891 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Grid Topology - 3-Phase Smart Microgrid{% endblock %}
+
+{% block extra_css %}
+<style>
+    .topo-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
+        align-items: start;
+    }
+    .svg-card {
+        background: rgba(5, 12, 28, 0.95);
+        border-radius: 12px;
+        padding: 18px 20px;
+        border: 1px solid rgba(26,140,153,0.35);
+        box-shadow: 0 0 40px rgba(26,140,153,0.12);
+    }
+    .svg-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+    }
+    .svg-header h2 { color: #e0f0f5; font-size: 17px; font-weight: 600; margin: 0; }
+    .svg-header .subtitle { color: #7a9eaa; font-size: 12px; margin-top: 3px; }
+    .ws-pill {
+        display: flex; align-items: center; gap: 7px;
+        background: rgba(0,0,0,0.45); padding: 6px 14px;
+        border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);
+    }
+    .ws-pill-dot { width: 9px; height: 9px; border-radius: 50%; background: #888; }
+    .ws-pill-dot.live { background: #27ae60; animation: blink 2s ease-in-out infinite; }
+    .ws-pill-dot.error { background: #e74c3c; }
+    .ws-pill-txt { color: #ccc; font-size: 12px; font-weight: 600; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Flow animations ── */
+    @keyframes flowDown  { to { stroke-dashoffset: 20; } }
+    @keyframes flowUp    { to { stroke-dashoffset: -20; } }
+    @keyframes flowRight { to { stroke-dashoffset: 20; } }
+    .flow-down  { stroke-dasharray: 9 5; animation: flowDown  1.2s linear infinite; }
+    .flow-up    { stroke-dasharray: 9 5; animation: flowUp    1.2s linear infinite; }
+    .flow-right { stroke-dasharray: 9 5; animation: flowRight 1.2s linear infinite; }
+    .flow-normal   { stroke: #27ae60; }
+    .flow-warning  { stroke: #f39c12; }
+    .flow-critical { stroke: #e74c3c; }
+    @keyframes nodePulse { 0%,100%{opacity:1;r:5} 50%{opacity:0.5;r:4} }
+    .status-dot { animation: nodePulse 2s ease-in-out infinite; }
+
+    /* ── Control panel ── */
+    .ctrl-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .ctrl-card {
+        background: rgba(5, 12, 28, 0.95);
+        border: 1px solid rgba(26,140,153,0.25);
+        border-radius: 10px;
+        padding: 16px;
+    }
+    .ctrl-card h3 {
+        color: #1a8c99; font-size: 12px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px;
+        margin: 0 0 12px 0;
+    }
+    .mode-tabs { display: flex; gap: 6px; }
+    .mode-tab {
+        flex: 1; padding: 9px; border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.05); color: #aaa;
+        border-radius: 7px; cursor: pointer; font-size: 12px;
+        font-weight: 600; text-align: center; transition: all 0.2s;
+    }
+    .mode-tab.active-rt  { background: rgba(39,174,96,0.25);  border-color: #27ae60; color: #27ae60; }
+    .mode-tab.active-sim { background: rgba(52,152,219,0.25); border-color: #3498db; color: #3498db; }
+    .mode-tab:hover { background: rgba(255,255,255,0.1); color: white; }
+
+    .ctrl-label { color: #8aa; font-size: 11px; font-weight: 600; text-transform: uppercase; margin: 10px 0 5px; letter-spacing: 0.5px; }
+    .ctrl-input {
+        width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+        color: white; font-size: 13px;
+    }
+    .ctrl-input:focus { outline: none; border-color: #1a8c99; }
+    select.ctrl-input option { background: #0d1b2a; color: white; }
+
+    .run-btn {
+        width: 100%; padding: 12px; border: none; border-radius: 8px;
+        font-size: 15px; font-weight: 700; cursor: pointer;
+        background: linear-gradient(135deg, #27ae60, #1a8c99);
+        color: white; transition: all 0.25s; margin-top: 4px;
+    }
+    .run-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(39,174,96,0.4); }
+    .run-btn.running { background: linear-gradient(135deg, #c0392b, #e74c3c); }
+    .run-btn.running:hover { box-shadow: 0 4px 15px rgba(231,76,60,0.4); }
+    .run-status { margin-top: 8px; font-size: 12px; text-align: center; color: #7a9eaa; min-height: 16px; }
+
+    .progress-wrap { background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; margin-top: 8px; overflow: hidden; display: none; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #27ae60, #1a8c99); border-radius: 4px; transition: width 0.5s; }
+    .run-timer { color: #7a9eaa; font-size: 11px; text-align: center; margin-top: 5px; display: none; }
+
+    /* Phase bars */
+    .phase-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    .phase-lbl { font-size: 11px; font-weight: 700; width: 18px; }
+    .phase-lbl.a { color: #e74c3c; }
+    .phase-lbl.b { color: #f39c12; }
+    .phase-lbl.c { color: #3498db; }
+    .phase-bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+    .phase-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s; }
+    .phase-val { color: #ccc; font-size: 11px; width: 38px; text-align: right; }
+
+    /* Event log */
+    .event-log { max-height: 160px; overflow-y: auto; }
+    .event-log::-webkit-scrollbar { width: 3px; }
+    .event-log::-webkit-scrollbar-thumb { background: rgba(26,140,153,0.4); border-radius: 2px; }
+    .log-entry { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:14px;">
+    <h2 style="color:white;font-size:20px;margin:0;">3-Phase Smart Microgrid</h2>
+    <div style="color:rgba(255,255,255,0.55);font-size:13px;margin-top:3px;">Live grid topology &mdash; animated power flow visualization</div>
+</div>
+
+<div class="topo-layout">
+
+    <!-- ══════════════════ SVG DIAGRAM ══════════════════ -->
+    <div class="svg-card">
+        <div class="svg-header">
+            <div>
+                <h2>Grid Single-Line Diagram</h2>
+                <div class="subtitle">Real-time component status &bull; 3φ power flow</div>
+            </div>
+            <div class="ws-pill">
+                <span class="ws-pill-dot" id="wsDot"></span>
+                <span class="ws-pill-txt" id="wsLabel">Connecting…</span>
+                <span style="color:#555;font-size:11px;" id="wsTime"></span>
+            </div>
+        </div>
+
+        <svg id="gridSvg" viewBox="0 0 980 545" style="width:100%;height:auto;">
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glow-sm">
+                    <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <linearGradient id="busGradA" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1"/>
+                    <stop offset="100%" style="stop-color:#c0392b;stop-opacity:1"/>
+                </linearGradient>
+                <linearGradient id="busGradB" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#f39c12;stop-opacity:1"/>
+                    <stop offset="100%" style="stop-color:#e67e22;stop-opacity:1"/>
+                </linearGradient>
+                <linearGradient id="busGradC" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#3498db;stop-opacity:1"/>
+                    <stop offset="100%" style="stop-color:#2980b9;stop-opacity:1"/>
+                </linearGradient>
+                <radialGradient id="utilGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" style="stop-color:#1a8c99;stop-opacity:0.4"/>
+                    <stop offset="100%" style="stop-color:#0d1b2a;stop-opacity:0"/>
+                </radialGradient>
+            </defs>
+
+            <!-- Background grid lines (subtle) -->
+            <defs>
+                <pattern id="grid-bg" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(26,140,153,0.06)" stroke-width="0.5"/>
+                </pattern>
+            </defs>
+            <rect width="980" height="545" fill="url(#grid-bg)" rx="8"/>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- UTILITY GRID (top center)           -->
+            <!-- ═══════════════════════════════════ -->
+            <g id="comp-grid" transform="translate(420, 12)">
+                <!-- Glow halo -->
+                <circle cx="70" cy="35" r="50" fill="url(#utilGrad)"/>
+                <!-- Box -->
+                <rect x="0" y="0" width="140" height="60" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#1a8c99" stroke-width="1.5"/>
+                <!-- Tower icon -->
+                <line x1="70" y1="8"  x2="50" y2="28" stroke="#7ecfe0" stroke-width="1.5"/>
+                <line x1="70" y1="8"  x2="90" y2="28" stroke="#7ecfe0" stroke-width="1.5"/>
+                <line x1="70" y1="8"  x2="70" y2="52" stroke="#7ecfe0" stroke-width="2"/>
+                <line x1="58" y1="30" x2="82" y2="30" stroke="#7ecfe0" stroke-width="1.5"/>
+                <line x1="62" y1="20" x2="78" y2="20" stroke="#7ecfe0" stroke-width="1.5"/>
+                <!-- Phase wire dots -->
+                <circle cx="52" cy="28" r="3" fill="#e74c3c" filter="url(#glow-sm)"/>
+                <circle cx="70" cy="28" r="3" fill="#f39c12" filter="url(#glow-sm)"/>
+                <circle cx="88" cy="28" r="3" fill="#3498db" filter="url(#glow-sm)"/>
+                <!-- Label -->
+                <text x="70" y="74" text-anchor="middle" fill="#7ecfe0" font-size="11" font-weight="700" letter-spacing="0.5">UTILITY GRID</text>
+                <text x="70" y="85" text-anchor="middle" fill="#4a7a88" font-size="9.5" id="grid-kv">11 kV / 50.0 Hz</text>
+                <!-- Status dot -->
+                <circle cx="132" cy="8" r="5" fill="#27ae60" class="status-dot" id="sd-grid"/>
+            </g>
+
+            <!-- Main feed line: Grid → Breaker -->
+            <line x1="490" y1="98" x2="490" y2="120" stroke="#4a6a7a" stroke-width="2.5"/>
+            <path d="M490,98 L490,120" stroke="#27ae60" stroke-width="2" class="flow-down flow-normal" id="fl-grid-cb"/>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- MAIN CIRCUIT BREAKER                -->
+            <!-- ═══════════════════════════════════ -->
+            <g id="comp-cb-main" transform="translate(466, 120)">
+                <rect x="0" y="0" width="48" height="26" rx="5"
+                      fill="rgba(39,174,96,0.2)" stroke="#27ae60" stroke-width="1.5" id="cb-main-rect"/>
+                <!-- CB symbol: two lines with gap -->
+                <line x1="10" y1="13" x2="19" y2="13" stroke="#27ae60" stroke-width="2"/>
+                <line x1="29" y1="13" x2="38" y2="13" stroke="#27ae60" stroke-width="2"/>
+                <circle cx="24" cy="9" r="3" fill="#27ae60" opacity="0.7"/>
+                <text x="24" y="34" text-anchor="middle" fill="#27ae60" font-size="9" font-weight="600">CB-MAIN</text>
+                <circle cx="43" cy="4" r="4" fill="#27ae60" class="status-dot" id="sd-cb-main"/>
+            </g>
+
+            <!-- Breaker → Transformer -->
+            <line x1="490" y1="146" x2="490" y2="168" stroke="#4a6a7a" stroke-width="2.5"/>
+            <path d="M490,146 L490,168" stroke="#27ae60" stroke-width="2" class="flow-down flow-normal" id="fl-cb-tx"/>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- TRANSFORMER (3-phase)               -->
+            <!-- ═══════════════════════════════════ -->
+            <g id="comp-tx" transform="translate(420, 168)">
+                <rect x="0" y="0" width="140" height="68" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#3498db" stroke-width="2"/>
+                <!-- HV coils (top row) -->
+                <ellipse cx="28"  cy="18" rx="14" ry="9" fill="none" stroke="#e74c3c" stroke-width="1.5"/>
+                <ellipse cx="70"  cy="18" rx="14" ry="9" fill="none" stroke="#f39c12" stroke-width="1.5"/>
+                <ellipse cx="112" cy="18" rx="14" ry="9" fill="none" stroke="#3498db" stroke-width="1.5"/>
+                <!-- LV coils (bottom row) -->
+                <ellipse cx="28"  cy="48" rx="14" ry="9" fill="none" stroke="#e74c3c" stroke-width="1.5" opacity="0.6"/>
+                <ellipse cx="70"  cy="48" rx="14" ry="9" fill="none" stroke="#f39c12" stroke-width="1.5" opacity="0.6"/>
+                <ellipse cx="112" cy="48" rx="14" ry="9" fill="none" stroke="#3498db" stroke-width="1.5" opacity="0.6"/>
+                <!-- Core line -->
+                <line x1="5" y1="33" x2="135" y2="33" stroke="#2c4a6e" stroke-width="1.5" stroke-dasharray="4,4"/>
+                <!-- Labels -->
+                <text x="70" y="83" text-anchor="middle" fill="#7ecfe0" font-size="11" font-weight="700">TRANSFORMER</text>
+                <text x="70" y="94" text-anchor="middle" fill="#4a7a88" font-size="9">11kV / 415V  •  3φ  •  Δ-Y</text>
+                <circle cx="132" cy="6" r="5" fill="#27ae60" class="status-dot" id="sd-tx"/>
+            </g>
+
+            <!-- Transformer → Bus -->
+            <line x1="490" y1="262" x2="490" y2="282" stroke="#4a6a7a" stroke-width="2.5"/>
+            <path d="M490,262 L490,282" stroke="#27ae60" stroke-width="2" class="flow-down flow-normal" id="fl-tx-bus"/>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- MAIN 3-PHASE BUS BAR                -->
+            <!-- ═══════════════════════════════════ -->
+            <!-- Phase A (Red) -->
+            <rect id="bus-a" x="50" y="282" width="880" height="7" rx="3" fill="url(#busGradA)" filter="url(#glow-sm)"/>
+            <!-- Phase B (Yellow) -->
+            <rect id="bus-b" x="50" y="293" width="880" height="7" rx="3" fill="url(#busGradB)" filter="url(#glow-sm)"/>
+            <!-- Phase C (Blue) -->
+            <rect id="bus-c" x="50" y="304" width="880" height="7" rx="3" fill="url(#busGradC)" filter="url(#glow-sm)"/>
+            <!-- Bus phase labels -->
+            <text x="38" y="290" text-anchor="end" fill="#e74c3c" font-size="9" font-weight="700">A</text>
+            <text x="38" y="301" text-anchor="end" fill="#f39c12" font-size="9" font-weight="700">B</text>
+            <text x="38" y="312" text-anchor="end" fill="#3498db" font-size="9" font-weight="700">C</text>
+            <text x="26" y="298" text-anchor="middle" fill="#4a7a88" font-size="8" font-style="italic">3φ Bus</text>
+            <!-- Bus voltage overlay -->
+            <rect x="395" y="315" width="190" height="20" rx="4" fill="rgba(0,0,0,0.55)"/>
+            <text x="490" y="328" text-anchor="middle" fill="#27ae60" font-size="10.5" font-weight="700" id="bus-readout">V: --- V  |  f: --- Hz</text>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- SOLAR PV  (x=130)                  -->
+            <!-- ═══════════════════════════════════ -->
+            <!-- Tap line -->
+            <line x1="130" y1="311" x2="130" y2="348" stroke="#4a6a7a" stroke-width="2"/>
+            <path d="M130,311 L130,348" stroke="#27ae60" stroke-width="2" class="flow-up flow-normal" id="fl-solar-bus"/>
+            <!-- Inverter -->
+            <g transform="translate(98,348)">
+                <rect x="0" y="0" width="64" height="30" rx="5"
+                      fill="rgba(39,174,96,0.18)" stroke="#27ae60" stroke-width="1.3"/>
+                <text x="32" y="12" text-anchor="middle" fill="#27ae60" font-size="8.5" font-weight="700">INV-PV</text>
+                <text x="32" y="23" text-anchor="middle" fill="#4a9a6a" font-size="8">DC / AC</text>
+                <circle cx="59" cy="5" r="3.5" fill="#27ae60" class="status-dot" id="sd-inv-pv"/>
+            </g>
+            <path d="M130,378 L130,398" stroke="#27ae60" stroke-width="2" class="flow-up flow-normal" id="fl-pv-inv"/>
+            <!-- Solar panel box -->
+            <g id="comp-solar" transform="translate(80,398)">
+                <rect x="0" y="0" width="100" height="80" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#f39c12" stroke-width="1.8"/>
+                <!-- Panel cells -->
+                <rect x="6" y="6" width="88" height="58" rx="3" fill="#0d2240"/>
+                <line x1="36" y1="6"  x2="36" y2="64" stroke="#1a3a5c" stroke-width="1"/>
+                <line x1="64" y1="6"  x2="64" y2="64" stroke="#1a3a5c" stroke-width="1"/>
+                <line x1="6"  y1="25" x2="94" y2="25" stroke="#1a3a5c" stroke-width="1"/>
+                <line x1="6"  y1="44" x2="94" y2="44" stroke="#1a3a5c" stroke-width="1"/>
+                <!-- Sun reflection glow -->
+                <ellipse cx="22" cy="18" rx="11" ry="8" fill="rgba(243,156,18,0.25)" filter="url(#glow-sm)"/>
+                <text x="50" y="74" text-anchor="middle" fill="#f39c12" font-size="10" font-weight="700">SOLAR PV</text>
+                <text x="50" y="87" text-anchor="middle" fill="#4a7a88" font-size="9" id="solar-kw">0.0 kW</text>
+                <circle cx="93" cy="5" r="4.5" fill="#27ae60" class="status-dot" id="sd-solar"/>
+            </g>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- WIND TURBINE  (x=290)              -->
+            <!-- ═══════════════════════════════════ -->
+            <line x1="290" y1="311" x2="290" y2="348" stroke="#4a6a7a" stroke-width="2"/>
+            <path d="M290,311 L290,348" stroke="#27ae60" stroke-width="2" class="flow-up flow-normal" id="fl-wind-bus"/>
+            <!-- Inverter -->
+            <g transform="translate(258,348)">
+                <rect x="0" y="0" width="64" height="30" rx="5"
+                      fill="rgba(46,204,113,0.18)" stroke="#2ecc71" stroke-width="1.3"/>
+                <text x="32" y="12" text-anchor="middle" fill="#2ecc71" font-size="8.5" font-weight="700">INV-WT</text>
+                <text x="32" y="23" text-anchor="middle" fill="#2ecc71" font-size="8" opacity="0.7">AC / AC</text>
+                <circle cx="59" cy="5" r="3.5" fill="#2ecc71" class="status-dot" id="sd-inv-wt"/>
+            </g>
+            <path d="M290,378 L290,398" stroke="#2ecc71" stroke-width="2" class="flow-up flow-normal"/>
+            <!-- Wind turbine -->
+            <g id="comp-wind" transform="translate(252,398)">
+                <rect x="0" y="0" width="76" height="80" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#2ecc71" stroke-width="1.8"/>
+                <!-- Tower -->
+                <line x1="38" y1="55" x2="38" y2="70" stroke="#2ecc71" stroke-width="3" stroke-linecap="round"/>
+                <!-- Hub -->
+                <circle cx="38" cy="38" r="5" fill="#2ecc71" opacity="0.9"/>
+                <!-- Blades (rotated group) -->
+                <g id="wind-blades" style="transform-origin:38px 38px;animation:spinBlade 2s linear infinite;">
+                    <line x1="38" y1="38" x2="38" y2="15" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+                    <line x1="38" y1="38" x2="58" y2="52" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+                    <line x1="38" y1="38" x2="18" y2="52" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+                </g>
+                <text x="38" y="74" text-anchor="middle" fill="#2ecc71" font-size="10" font-weight="700">WIND</text>
+                <text x="38" y="87" text-anchor="middle" fill="#4a7a88" font-size="9" id="wind-kw">0.0 kW</text>
+                <circle cx="69" cy="5" r="4.5" fill="#2ecc71" class="status-dot" id="sd-wind"/>
+            </g>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- BATTERY STORAGE  (x=490)           -->
+            <!-- ═══════════════════════════════════ -->
+            <line x1="490" y1="335" x2="490" y2="348" stroke="#4a6a7a" stroke-width="2"/>
+            <path d="M490,335 L490,348" stroke="#9b59b6" stroke-width="2" class="flow-down flow-normal" id="fl-bus-bms"/>
+            <!-- BMS -->
+            <g transform="translate(458,348)">
+                <rect x="0" y="0" width="64" height="30" rx="5"
+                      fill="rgba(155,89,182,0.2)" stroke="#9b59b6" stroke-width="1.3"/>
+                <text x="32" y="12" text-anchor="middle" fill="#9b59b6" font-size="8.5" font-weight="700">BMS</text>
+                <text x="32" y="23" text-anchor="middle" fill="#9b59b6" font-size="8" opacity="0.7">Bi-Dir</text>
+                <circle cx="59" cy="5" r="3.5" fill="#27ae60" class="status-dot" id="sd-bms"/>
+            </g>
+            <path d="M490,378 L490,398" stroke="#9b59b6" stroke-width="2" class="flow-down flow-normal" id="fl-bms-batt"/>
+            <!-- Battery box -->
+            <g id="comp-batt" transform="translate(450,398)">
+                <rect x="0" y="0" width="80" height="80" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#9b59b6" stroke-width="1.8"/>
+                <!-- Battery icon -->
+                <rect x="27" y="7"  width="26" height="7" rx="3" fill="#9b59b6" opacity="0.8"/>
+                <rect x="10" y="14" width="60" height="38" rx="5" fill="rgba(155,89,182,0.15)" stroke="#9b59b6" stroke-width="1.2"/>
+                <!-- Level fill -->
+                <rect x="13" y="17" width="0" height="32" rx="3" fill="#9b59b6" opacity="0.65" id="batt-fill"/>
+                <text x="40" y="38" text-anchor="middle" fill="white" font-size="11" font-weight="700" id="batt-pct">75%</text>
+                <!-- SOC indicator dots -->
+                <circle cx="16" cy="59" r="3" fill="#9b59b6" opacity="0.3" id="soc1"/>
+                <circle cx="26" cy="59" r="3" fill="#9b59b6" opacity="0.3" id="soc2"/>
+                <circle cx="36" cy="59" r="3" fill="#9b59b6" opacity="0.3" id="soc3"/>
+                <circle cx="46" cy="59" r="3" fill="#9b59b6" opacity="0.3" id="soc4"/>
+                <circle cx="56" cy="59" r="3" fill="#9b59b6" opacity="0.3" id="soc5"/>
+                <text x="40" y="74" text-anchor="middle" fill="#9b59b6" font-size="10" font-weight="700">BATTERY</text>
+                <text x="40" y="87" text-anchor="middle" fill="#4a7a88" font-size="9" id="batt-kw">0.0 kW</text>
+                <circle cx="74" cy="5" r="4.5" fill="#27ae60" class="status-dot" id="sd-batt"/>
+            </g>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- LOAD 1 – RESIDENTIAL  (x=670)      -->
+            <!-- ═══════════════════════════════════ -->
+            <line x1="670" y1="311" x2="670" y2="340" stroke="#4a6a7a" stroke-width="2"/>
+            <path d="M670,311 L670,340" stroke="#27ae60" stroke-width="2" class="flow-down flow-normal" id="fl-bus-cb1"/>
+            <!-- CB-1 -->
+            <g transform="translate(645,340)">
+                <rect x="0" y="0" width="50" height="24" rx="4"
+                      fill="rgba(39,174,96,0.2)" stroke="#27ae60" stroke-width="1.3" id="cb1-rect"/>
+                <line x1="9"  y1="12" x2="18" y2="12" stroke="#27ae60" stroke-width="2"/>
+                <line x1="28" y1="12" x2="38" y2="12" stroke="#27ae60" stroke-width="2"/>
+                <circle cx="23" cy="7" r="3" fill="#27ae60" opacity="0.7"/>
+                <text x="25" y="32" text-anchor="middle" fill="#27ae60" font-size="9" font-weight="600">CB-1</text>
+            </g>
+            <path d="M670,364 L670,398" stroke="#27ae60" stroke-width="2" class="flow-down flow-normal" id="fl-cb1-l1"/>
+            <!-- Load 1 box -->
+            <g id="comp-load1" transform="translate(625,398)">
+                <rect x="0" y="0" width="90" height="80" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#27ae60" stroke-width="1.8"/>
+                <!-- House icon -->
+                <polygon points="45,10 18,32 72,32" fill="#27ae60" opacity="0.7"/>
+                <rect x="20" y="32" width="50" height="30" fill="rgba(39,174,96,0.2)"/>
+                <rect x="34" y="42" width="14" height="20" fill="rgba(39,174,96,0.4)" rx="2"/>
+                <!-- Windows -->
+                <rect x="23" y="37" width="10" height="8" fill="rgba(39,174,96,0.3)" rx="1"/>
+                <rect x="57" y="37" width="10" height="8" fill="rgba(39,174,96,0.3)" rx="1"/>
+                <text x="45" y="74" text-anchor="middle" fill="#27ae60" font-size="10" font-weight="700">LOAD 1</text>
+                <text x="45" y="85" text-anchor="middle" fill="#4a7a88" font-size="8.5">Residential</text>
+                <text x="45" y="96" text-anchor="middle" fill="#7ecfe0" font-size="9" id="load1-kw">0.0 kW</text>
+                <circle cx="83" cy="5" r="4.5" fill="#27ae60" class="status-dot" id="sd-load1"/>
+            </g>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- LOAD 2 – INDUSTRIAL  (x=860)       -->
+            <!-- ═══════════════════════════════════ -->
+            <line x1="860" y1="311" x2="860" y2="340" stroke="#4a6a7a" stroke-width="2"/>
+            <path d="M860,311 L860,340" stroke="#e67e22" stroke-width="2" class="flow-down flow-normal" id="fl-bus-cb2"/>
+            <!-- CB-2 -->
+            <g transform="translate(835,340)">
+                <rect x="0" y="0" width="50" height="24" rx="4"
+                      fill="rgba(230,126,34,0.2)" stroke="#e67e22" stroke-width="1.3" id="cb2-rect"/>
+                <line x1="9"  y1="12" x2="18" y2="12" stroke="#e67e22" stroke-width="2"/>
+                <line x1="28" y1="12" x2="38" y2="12" stroke="#e67e22" stroke-width="2"/>
+                <circle cx="23" cy="7" r="3" fill="#e67e22" opacity="0.7"/>
+                <text x="25" y="32" text-anchor="middle" fill="#e67e22" font-size="9" font-weight="600">CB-2</text>
+            </g>
+            <path d="M860,364 L860,398" stroke="#e67e22" stroke-width="2" class="flow-down flow-normal" id="fl-cb2-l2"/>
+            <!-- Load 2 box -->
+            <g id="comp-load2" transform="translate(815,398)">
+                <rect x="0" y="0" width="90" height="80" rx="8"
+                      fill="rgba(15,30,55,0.95)" stroke="#e67e22" stroke-width="1.8"/>
+                <!-- Factory icon -->
+                <rect x="5" y="28" width="80" height="40" fill="rgba(230,126,34,0.18)"/>
+                <rect x="12" y="18" width="18" height="16" fill="rgba(230,126,34,0.3)"/>
+                <rect x="36" y="13" width="18" height="21" fill="rgba(230,126,34,0.3)"/>
+                <rect x="60" y="20" width="18" height="14" fill="rgba(230,126,34,0.3)"/>
+                <!-- Smoke stacks -->
+                <rect x="15" y="7"  width="8" height="14" fill="#e67e22" opacity="0.6" rx="2"/>
+                <rect x="39" y="3"  width="8" height="14" fill="#e67e22" opacity="0.6" rx="2"/>
+                <rect x="63" y="9"  width="8" height="12" fill="#e67e22" opacity="0.6" rx="2"/>
+                <text x="45" y="74" text-anchor="middle" fill="#e67e22" font-size="10" font-weight="700">LOAD 2</text>
+                <text x="45" y="85" text-anchor="middle" fill="#4a7a88" font-size="8.5">Industrial</text>
+                <text x="45" y="96" text-anchor="middle" fill="#7ecfe0" font-size="9" id="load2-kw">0.0 kW</text>
+                <circle cx="83" cy="5" r="4.5" fill="#27ae60" class="status-dot" id="sd-load2"/>
+            </g>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- SMART METER (on bus, center-right)  -->
+            <!-- ═══════════════════════════════════ -->
+            <g transform="translate(565,288)">
+                <rect x="0" y="0" width="60" height="36" rx="5"
+                      fill="rgba(26,140,153,0.2)" stroke="#1a8c99" stroke-width="1.3"/>
+                <text x="30" y="12" text-anchor="middle" fill="#1a8c99" font-size="8" font-weight="700">SMART</text>
+                <text x="30" y="22" text-anchor="middle" fill="#1a8c99" font-size="8" font-weight="700">METER</text>
+                <circle cx="30" cy="31" r="3" fill="#27ae60" class="status-dot"/>
+            </g>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- BOTTOM: LIVE METRICS BAR            -->
+            <!-- ═══════════════════════════════════ -->
+            <rect x="10" y="498" width="960" height="40" rx="7" fill="rgba(0,0,0,0.55)" stroke="rgba(26,140,153,0.2)" stroke-width="1"/>
+            <text x="22" y="513" fill="#1a8c99" font-size="9.5" font-weight="700">LIVE</text>
+            <text x="22" y="529" fill="#555" font-size="8.5">measurements</text>
+
+            <text x="80"  y="513" fill="#6a8a9a" font-size="9">Voltage</text>
+            <text x="80"  y="529" fill="#27ae60" font-size="11" font-weight="700" id="m-v">---</text>
+            <text x="96"  y="529" fill="#555" font-size="9"> V</text>
+
+            <text x="155" y="513" fill="#6a8a9a" font-size="9">Current</text>
+            <text x="155" y="529" fill="#3498db" font-size="11" font-weight="700" id="m-i">---</text>
+            <text x="171" y="529" fill="#555" font-size="9"> A</text>
+
+            <text x="230" y="513" fill="#6a8a9a" font-size="9">Frequency</text>
+            <text x="230" y="529" fill="#f39c12" font-size="11" font-weight="700" id="m-f">---</text>
+            <text x="248" y="529" fill="#555" font-size="9"> Hz</text>
+
+            <text x="315" y="513" fill="#6a8a9a" font-size="9">Active Power</text>
+            <text x="315" y="529" fill="#e74c3c" font-size="11" font-weight="700" id="m-p">---</text>
+            <text x="335" y="529" fill="#555" font-size="9"> kW</text>
+
+            <text x="400" y="513" fill="#6a8a9a" font-size="9">Reactive Power</text>
+            <text x="400" y="529" fill="#9b59b6" font-size="11" font-weight="700" id="m-q">---</text>
+            <text x="420" y="529" fill="#555" font-size="9"> kVAR</text>
+
+            <text x="490" y="513" fill="#6a8a9a" font-size="9">Power Factor</text>
+            <text x="490" y="529" fill="#1a8c99" font-size="11" font-weight="700" id="m-pf">---</text>
+
+            <!-- Vertical divider -->
+            <line x1="590" y1="502" x2="590" y2="534" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+            <!-- ML Risk indicators -->
+            <text x="600" y="513" fill="#1a8c99" font-size="9.5" font-weight="700">ML RISK</text>
+            <text x="600" y="529" fill="#555" font-size="8.5">predictions</text>
+            <text x="652" y="513" fill="#6a8a9a" font-size="9">Equipment</text>
+            <text x="652" y="529" fill="#27ae60" font-size="11" font-weight="700" id="ml-equip">---</text>
+            <text x="730" y="513" fill="#6a8a9a" font-size="9">Overload</text>
+            <text x="730" y="529" fill="#27ae60" font-size="11" font-weight="700" id="ml-ovld">---</text>
+            <text x="808" y="513" fill="#6a8a9a" font-size="9">V-Sag</text>
+            <text x="808" y="529" fill="#27ae60" font-size="11" font-weight="700" id="ml-vsag">---</text>
+            <text x="870" y="513" fill="#6a8a9a" font-size="9">EPQI</text>
+            <text x="870" y="529" fill="#27ae60" font-size="11" font-weight="700" id="ml-epqi">---</text>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- LEGEND                              -->
+            <!-- ═══════════════════════════════════ -->
+            <g transform="translate(10,470)">
+                <circle cx="5"  cy="8" r="4" fill="#e74c3c" filter="url(#glow-sm)"/>
+                <text x="13"  y="12" fill="#e74c3c" font-size="9">Phase A</text>
+                <circle cx="75" cy="8" r="4" fill="#f39c12" filter="url(#glow-sm)"/>
+                <text x="83"  y="12" fill="#f39c12" font-size="9">Phase B</text>
+                <circle cx="145" cy="8" r="4" fill="#3498db" filter="url(#glow-sm)"/>
+                <text x="153" y="12" fill="#3498db" font-size="9">Phase C</text>
+                <circle cx="215" cy="8" r="4" fill="#27ae60"/>
+                <text x="223" y="12" fill="#27ae60" font-size="9">Normal</text>
+                <circle cx="275" cy="8" r="4" fill="#f39c12"/>
+                <text x="283" y="12" fill="#f39c12" font-size="9">Warning</text>
+                <circle cx="340" cy="8" r="4" fill="#e74c3c"/>
+                <text x="348" y="12" fill="#e74c3c" font-size="9">Critical</text>
+            </g>
+
+        </svg>
+    </div>
+
+    <!-- ══════════════════ CONTROL PANEL ══════════════════ -->
+    <div class="ctrl-panel">
+
+        <!-- Mode -->
+        <div class="ctrl-card">
+            <h3>Data Source</h3>
+            <div class="mode-tabs">
+                <div class="mode-tab active-rt" id="tab-rt" onclick="setMode('realtime')">&#9679; Real-time</div>
+                <div class="mode-tab" id="tab-sim" onclick="setMode('simulation')">&#9654; Simulation</div>
+            </div>
+            <div id="sim-options" style="display:none;">
+                <div class="ctrl-label">Scenario</div>
+                <select class="ctrl-input" id="sim-scenario">
+                    <option value="normal">Normal Operation</option>
+                    <option value="voltage_sag">Voltage Sag</option>
+                    <option value="overcurrent">Overcurrent</option>
+                    <option value="frequency_drift">Frequency Drift</option>
+                    <option value="mixed">Mixed Anomalies</option>
+                </select>
+                <div class="ctrl-label">Duration (seconds)</div>
+                <input type="number" class="ctrl-input" id="sim-dur" value="60" min="10" max="600" step="10"/>
+            </div>
+        </div>
+
+        <!-- Run Controls -->
+        <div class="ctrl-card">
+            <h3>Grid Control</h3>
+            <button class="run-btn" id="runBtn" onclick="handleRun()">&#9654;  Start Grid</button>
+            <div class="run-status" id="runStatus">Idle</div>
+            <div class="progress-wrap" id="progWrap"><div class="progress-fill" id="progFill"></div></div>
+            <div class="run-timer" id="runTimer"></div>
+        </div>
+
+        <!-- Phase Voltage Meters -->
+        <div class="ctrl-card">
+            <h3>Phase Voltages</h3>
+            <div class="phase-row">
+                <span class="phase-lbl a">A</span>
+                <div class="phase-bar-bg"><div class="phase-bar-fill" id="bar-a" style="width:80%;background:#e74c3c;"></div></div>
+                <span class="phase-val" id="val-a">---</span>
+            </div>
+            <div class="phase-row">
+                <span class="phase-lbl b">B</span>
+                <div class="phase-bar-bg"><div class="phase-bar-fill" id="bar-b" style="width:78%;background:#f39c12;"></div></div>
+                <span class="phase-val" id="val-b">---</span>
+            </div>
+            <div class="phase-row">
+                <span class="phase-lbl c">C</span>
+                <div class="phase-bar-bg"><div class="phase-bar-fill" id="bar-c" style="width:82%;background:#3498db;"></div></div>
+                <span class="phase-val" id="val-c">---</span>
+            </div>
+            <div style="margin-top:10px;">
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:#4a7a88;font-size:10px;">Frequency</span>
+                    <span style="color:#f39c12;font-size:12px;font-weight:700;" id="freq-disp">--- Hz</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:5px;">
+                    <span style="color:#4a7a88;font-size:10px;">Active Power</span>
+                    <span style="color:#e74c3c;font-size:12px;font-weight:700;" id="pwr-disp">--- kW</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="ctrl-card">
+            <h3>Event Log</h3>
+            <div class="event-log" id="eventLog"></div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+@keyframes spinBlade {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+/* Wind blade rotation anchored to hub center */
+#wind-blades {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Constants ─────────────────────────────────────────────────────
+const GRID_WS  = API_URL.replace(/^http/, 'ws') + '/ws/grid-data';
+const ML_WS    = API_URL.replace(/^http/, 'ws') + '/ws/ml-predictions';
+const NOM_V    = 240;    // nominal voltage (V)
+const MAX_FLOW = 3.0;    // max flow speed multiplier
+
+// ── State ─────────────────────────────────────────────────────────
+let mode        = 'realtime';
+let running     = false;
+let gridWs      = null;
+let mlWs        = null;
+let progTimer   = null;
+let abortCtrl   = null;
+let windSpeed   = 2; // blade animation seconds
+
+// ── Mode toggle ───────────────────────────────────────────────────
+function setMode(m) {
+    mode = m;
+    document.getElementById('tab-rt').className  = 'mode-tab' + (m === 'realtime'   ? ' active-rt'  : '');
+    document.getElementById('tab-sim').className = 'mode-tab' + (m === 'simulation' ? ' active-sim' : '');
+    document.getElementById('sim-options').style.display = m === 'simulation' ? 'block' : 'none';
+    logEvt('Mode: ' + (m === 'realtime' ? 'Real-time' : 'Simulation'), 'info');
+}
+
+// ── Run / Stop ────────────────────────────────────────────────────
+async function handleRun() {
+    if (running) { stopGrid(); return; }
+    running = true;
+    const btn = document.getElementById('runBtn');
+    btn.textContent = '⏹  Stop Grid';
+    btn.classList.add('running');
+
+    if (mode === 'simulation') {
+        const dur      = parseInt(document.getElementById('sim-dur').value) || 60;
+        const scenario = document.getElementById('sim-scenario').value;
+        setStatus('Running: ' + scenario, '#f39c12');
+        logEvt('Simulation started — ' + scenario + ', ' + dur + 's', 'info');
+        startProgress(dur);
+
+        abortCtrl = new AbortController();
+        const url = API_URL + '/api/grid/generate-simple?num_points=' + dur + '&scenario=' + scenario;
+        fetch(url, { signal: abortCtrl.signal })
+            .then(r => r.json())
+            .then(d => { logEvt('Simulation done — ' + (d.count || 0) + ' points', 'success'); stopGrid(); })
+            .catch(e => { if (e.name !== 'AbortError') { logEvt('Error: ' + e.message, 'error'); stopGrid(); } });
+    } else {
+        setStatus('Live monitoring active', '#27ae60');
+        logEvt('Real-time monitoring started', 'success');
+    }
+}
+
+function stopGrid() {
+    running = false;
+    const btn = document.getElementById('runBtn');
+    btn.textContent = '▶  Start Grid';
+    btn.classList.remove('running');
+    setStatus('Idle', '#4a7a88');
+    if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
+    if (progTimer) { clearInterval(progTimer); progTimer = null; }
+    document.getElementById('progWrap').style.display = 'none';
+    document.getElementById('runTimer').style.display = 'none';
+    logEvt('Grid stopped', 'warn');
+}
+
+function setStatus(msg, color) {
+    const el = document.getElementById('runStatus');
+    el.textContent = msg;
+    el.style.color = color;
+}
+
+function startProgress(total) {
+    const t0 = Date.now();
+    document.getElementById('progWrap').style.display = 'block';
+    document.getElementById('runTimer').style.display = 'block';
+    progTimer = setInterval(() => {
+        const elapsed = (Date.now() - t0) / 1000;
+        const pct = Math.min(100, (elapsed / total) * 100);
+        document.getElementById('progFill').style.width = pct + '%';
+        const rem = Math.max(0, total - Math.floor(elapsed));
+        document.getElementById('runTimer').textContent =
+            Math.floor(elapsed) + 's / ' + total + 's  (' + rem + 's left)';
+        if (elapsed >= total) clearInterval(progTimer);
+    }, 500);
+}
+
+// ── WebSockets ────────────────────────────────────────────────────
+function connectGridWs() {
+    gridWs = new WebSocket(GRID_WS);
+    gridWs.onopen  = () => { wsStatus(true); logEvt('Grid WebSocket connected', 'success'); };
+    gridWs.onclose = () => { wsStatus(false); setTimeout(connectGridWs, 3000); };
+    gridWs.onerror = () => wsStatus(false);
+    gridWs.onmessage = e => {
+        try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'grid_data' && msg.data) applyGridData(msg.data);
+            else if (Array.isArray(msg) && msg.length) applyGridData(msg[msg.length - 1]);
+            else if (msg.type === 'initial_data' && Array.isArray(msg.data) && msg.data.length)
+                applyGridData(msg.data[msg.data.length - 1]);
+        } catch(err) {}
+    };
+}
+
+function connectMlWs() {
+    mlWs = new WebSocket(ML_WS);
+    mlWs.onopen  = () => setInterval(() => mlWs.readyState === 1 && mlWs.send('ping'), 25000);
+    mlWs.onclose = () => setTimeout(connectMlWs, 3000);
+    mlWs.onmessage = e => {
+        try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'ml_update' || msg.type === 'initial_predictions') applyMlData(msg.data || {});
+        } catch(err) {}
+    };
+}
+
+function wsStatus(ok) {
+    document.getElementById('wsDot').className  = 'ws-pill-dot' + (ok ? ' live' : ' error');
+    document.getElementById('wsLabel').textContent = ok ? 'Live' : 'Disconnected';
+}
+
+// ── Apply grid data → update SVG ─────────────────────────────────
+function applyGridData(d) {
+    const v  = parseFloat(d.voltage)        || 0;
+    const i  = parseFloat(d.current)        || 0;
+    const f  = parseFloat(d.frequency)      || 50;
+    const p  = parseFloat(d.active_power)   || 0;
+    const q  = parseFloat(d.reactive_power) || 0;
+    const ts = d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+    // Live metric bar
+    svgTxt('m-v',  v.toFixed(1));
+    svgTxt('m-i',  i.toFixed(2));
+    svgTxt('m-f',  f.toFixed(2));
+    svgTxt('m-p',  p.toFixed(2));
+    svgTxt('m-q',  q.toFixed(2));
+    const pf = (p > 0 && q !== null) ? (p / Math.sqrt(p*p + q*q)).toFixed(3) : '---';
+    svgTxt('m-pf', pf);
+
+    // Bus readout
+    svgTxt('bus-readout', 'V: ' + v.toFixed(1) + ' V  |  f: ' + f.toFixed(2) + ' Hz');
+
+    // Grid label
+    svgTxt('grid-kv', (v * (11000/415)).toFixed(0) + ' V / ' + f.toFixed(1) + ' Hz');
+
+    // Control panel phase bars (simulate ±2% spread between phases)
+    const va = v, vb = v * 0.985, vc = v * 0.992;
+    updatePhaseBar('a', va); updatePhaseBar('b', vb); updatePhaseBar('c', vc);
+    document.getElementById('freq-disp').textContent = f.toFixed(2) + ' Hz';
+    document.getElementById('pwr-disp').textContent  = p.toFixed(2) + ' kW';
+
+    // Distributed power estimates
+    const solarFrac = 0.32, windFrac = 0.18, battFrac = 0.12;
+    const load1Frac = 0.28, load2Frac = 0.22;
+    svgTxt('solar-kw',  (p * solarFrac).toFixed(1) + ' kW');
+    svgTxt('wind-kw',   (p * windFrac).toFixed(1)  + ' kW');
+    svgTxt('batt-kw',   (p * battFrac).toFixed(1)  + ' kW');
+    svgTxt('load1-kw',  (p * load1Frac).toFixed(1) + ' kW');
+    svgTxt('load2-kw',  (p * load2Frac).toFixed(1) + ' kW');
+
+    // Battery SOC (derive from reactive power as proxy)
+    const soc = Math.min(100, Math.max(5, 75 + (q / 20) * 10));
+    updateBatterySoc(soc);
+
+    // Flow animation speed (based on current magnitude)
+    const speed = Math.max(0.4, Math.min(MAX_FLOW, i / 25));
+    setFlowSpeeds(speed);
+
+    // Color all flow lines based on voltage deviation
+    const vDev = Math.abs(v - NOM_V) / NOM_V;
+    const fDev = Math.abs(f - 50) / 50;
+    let riskCls;
+    if      (vDev > 0.10 || fDev > 0.01 || i > 80) riskCls = 'critical';
+    else if (vDev > 0.05 || fDev > 0.005 || i > 60) riskCls = 'warning';
+    else                                              riskCls = 'normal';
+    setFlowColors(riskCls);
+    updateStatusDots(riskCls);
+
+    // Wind blade speed reacts to frequency
+    const blade = document.getElementById('wind-blades');
+    if (blade) blade.style.animationDuration = Math.max(0.5, (50 / Math.max(0.1, f)) * 1.5) + 's';
+
+    // Timestamp
+    document.getElementById('wsTime').textContent = ts;
+
+    // Log significant events
+    if (vDev > 0.10) logEvt('Voltage deviation: ' + v.toFixed(1) + ' V (' + (vDev*100).toFixed(1) + '%)', 'error');
+    else if (fDev > 0.01) logEvt('Frequency drift: ' + f.toFixed(2) + ' Hz', 'warn');
+    else if (i > 80)  logEvt('High current: ' + i.toFixed(1) + ' A', 'warn');
+}
+
+function applyMlData(data) {
+    // data may be keyed object or array
+    const models = Array.isArray(data) ? data : Object.entries(data).map(([k,v]) => ({model_name:k,...(typeof v==='object'?v:{})}));
+    models.forEach(m => {
+        const name  = (m.model_name || m.model_type || '').toLowerCase();
+        const risk  = m.risk_level || m.prediction || m.status || '---';
+        const color = risk === 'High' ? '#e74c3c' : risk === 'Medium' ? '#f39c12' : '#27ae60';
+        if (name.includes('equipment') || name.includes('failure'))  setMl('ml-equip', risk, color);
+        else if (name.includes('overload'))                           setMl('ml-ovld',  risk, color);
+        else if (name.includes('voltage') || name.includes('sag'))   setMl('ml-vsag',  risk, color);
+        else if (name.includes('epqi') || name.includes('quality'))  setMl('ml-epqi',  (m.epqi_score != null ? m.epqi_score.toFixed(1) : risk), color);
+    });
+    // Update CB rect colors on overload
+    const ovld = document.getElementById('ml-ovld');
+    if (ovld && ovld.textContent === 'High') {
+        ['cb1-rect','cb2-rect'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.setAttribute('stroke', '#e74c3c');
+        });
+    }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function svgTxt(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+}
+
+function setMl(id, val, color) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = val; el.setAttribute('fill', color); }
+}
+
+function updatePhaseBar(ph, voltage) {
+    const pct = Math.min(100, Math.max(0, (voltage / (NOM_V * 1.25)) * 100));
+    const bar = document.getElementById('bar-' + ph);
+    const val = document.getElementById('val-' + ph);
+    if (bar) bar.style.width = pct + '%';
+    if (val) val.textContent = voltage.toFixed(0) + ' V';
+}
+
+function updateBatterySoc(soc) {
+    const fill = document.getElementById('batt-fill');
+    const pct  = document.getElementById('batt-pct');
+    if (fill) fill.setAttribute('width', (54 * soc / 100).toFixed(0));
+    if (pct)  pct.textContent = soc.toFixed(0) + '%';
+    // SOC indicator dots
+    const filled = Math.round(soc / 20);
+    for (let i = 1; i <= 5; i++) {
+        const dot = document.getElementById('soc' + i);
+        if (dot) dot.setAttribute('opacity', i <= filled ? '1' : '0.2');
+    }
+}
+
+function setFlowSpeeds(multiplier) {
+    const dur = (1.8 / multiplier).toFixed(2) + 's';
+    document.querySelectorAll('.flow-down, .flow-up, .flow-right').forEach(el => {
+        el.style.animationDuration = dur;
+    });
+}
+
+function setFlowColors(cls) {
+    const color = cls === 'critical' ? '#e74c3c' : cls === 'warning' ? '#f39c12' : '#27ae60';
+    ['fl-grid-cb','fl-cb-tx','fl-tx-bus','fl-bus-cb1','fl-cb1-l1','fl-bus-cb2','fl-cb2-l2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('stroke', color);
+    });
+    // DER lines stay their own color (green for solar/wind, purple for battery)
+}
+
+function updateStatusDots(riskCls) {
+    const color = riskCls === 'critical' ? '#e74c3c' : riskCls === 'warning' ? '#f39c12' : '#27ae60';
+    ['sd-grid','sd-cb-main','sd-tx','sd-load1','sd-load2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('fill', color);
+    });
+}
+
+function logEvt(msg, type) {
+    const log = document.getElementById('eventLog');
+    const colors = { info:'#7a9eaa', success:'#27ae60', warn:'#f39c12', error:'#e74c3c' };
+    const t   = new Date().toLocaleTimeString();
+    const row = document.createElement('div');
+    row.className = 'log-entry';
+    row.innerHTML = '<span style="color:#3a5a6a;font-size:9px;">' + t + '</span> '
+                  + '<span style="color:' + (colors[type]||'#aaa') + ';font-size:10px;">' + msg + '</span>';
+    log.insertBefore(row, log.firstChild);
+    while (log.children.length > 25) log.removeChild(log.lastChild);
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+connectGridWs();
+connectMlWs();
+logEvt('Grid topology initialized', 'info');
+
+// Handle base.html data source toggle
+function onDataSourceChange(isSimMode) {
+    setMode(isSimMode ? 'simulation' : 'realtime');
+}
+</script>
+{% endblock %}

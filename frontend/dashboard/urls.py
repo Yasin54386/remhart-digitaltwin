@@ -29,7 +29,8 @@ urlpatterns = [
     path('energy-flow/', views.energy_flow, name='energy_flow'),
     path('realtime-monitoring/', views.realtime_monitoring, name='realtime_monitoring'),
     path('decision-making/', views.decision_making, name='decision_making'),
-    
+    path('grid-topology/', views.grid_topology, name='grid_topology'),
+
     # API endpoints for AJAX
     path('api/latest-data/', views.get_latest_data_ajax, name='api_latest_data'),
 ]

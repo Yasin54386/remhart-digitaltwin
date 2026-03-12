@@ -638,11 +638,25 @@ async function handleRun() {
         logEvt('Simulation started — ' + scenario + ', ' + dur + 's', 'info');
         startProgress(dur);
 
+        const simName = 'GridTopology_' + new Date().toISOString().slice(0,19).replace('T','_');
+        const request = {
+            name: simName,
+            scenario_type: scenario,
+            parameters: { num_points: dur, interval: 1 }
+        };
         abortCtrl = new AbortController();
-        const url = API_URL + '/api/grid/generate-simple?num_points=' + dur + '&scenario=' + scenario;
-        fetch(url, { signal: abortCtrl.signal })
+        fetch(API_URL + '/api/simulator/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify(request),
+            signal: abortCtrl.signal
+        })
             .then(r => r.json())
-            .then(d => { logEvt('Simulation done — ' + (d.count || 0) + ' points', 'success'); stopGrid(); })
+            .then(d => {
+                if (d.success) logEvt('Simulation done — ' + (d.total_points || dur) + ' points', 'success');
+                else logEvt('Sim error: ' + (d.detail || d.message || 'unknown'), 'error');
+                stopGrid();
+            })
             .catch(e => { if (e.name !== 'AbortError') { logEvt('Error: ' + e.message, 'error'); stopGrid(); } });
     } else {
         setStatus('Live monitoring active', '#27ae60');
@@ -693,8 +707,7 @@ function connectGridWs() {
     gridWs.onmessage = e => {
         try {
             const msg = JSON.parse(e.data);
-            if (msg.type === 'grid_data' && msg.data) applyGridData(msg.data);
-            else if (Array.isArray(msg) && msg.length) applyGridData(msg[msg.length - 1]);
+            if (msg.type === 'new_data' && msg.data) applyGridData(msg.data);
             else if (msg.type === 'initial_data' && Array.isArray(msg.data) && msg.data.length)
                 applyGridData(msg.data[msg.data.length - 1]);
         } catch(err) {}
@@ -719,12 +732,18 @@ function wsStatus(ok) {
 }
 
 // ── Apply grid data → update SVG ─────────────────────────────────
+// Data structure from WS: voltage/current are objects {phaseA,phaseB,phaseC,average},
+// frequency is {value}, active_power/reactive_power are {phaseA,phaseB,phaseC,total}
 function applyGridData(d) {
-    const v  = parseFloat(d.voltage)        || 0;
-    const i  = parseFloat(d.current)        || 0;
-    const f  = parseFloat(d.frequency)      || 50;
-    const p  = parseFloat(d.active_power)   || 0;
-    const q  = parseFloat(d.reactive_power) || 0;
+    const v  = parseFloat(d.voltage?.average       ?? d.voltage)        || 0;
+    const i  = parseFloat(d.current?.average       ?? d.current)        || 0;
+    const f  = parseFloat(d.frequency?.value       ?? d.frequency)      || 50;
+    const p  = parseFloat(d.active_power?.total    ?? d.active_power)   || 0;
+    const q  = parseFloat(d.reactive_power?.total  ?? d.reactive_power) || 0;
+    // Per-phase voltages (use actual values if present, else estimate)
+    const va = parseFloat(d.voltage?.phaseA ?? v);
+    const vb = parseFloat(d.voltage?.phaseB ?? v * 0.985);
+    const vc = parseFloat(d.voltage?.phaseC ?? v * 0.992);
     const ts = d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
 
     // Live metric bar
@@ -733,7 +752,7 @@ function applyGridData(d) {
     svgTxt('m-f',  f.toFixed(2));
     svgTxt('m-p',  p.toFixed(2));
     svgTxt('m-q',  q.toFixed(2));
-    const pf = (p > 0 && q !== null) ? (p / Math.sqrt(p*p + q*q)).toFixed(3) : '---';
+    const pf = (p > 0) ? (p / Math.sqrt(p*p + q*q)).toFixed(3) : '---';
     svgTxt('m-pf', pf);
 
     // Bus readout
@@ -742,8 +761,7 @@ function applyGridData(d) {
     // Grid label
     svgTxt('grid-kv', (v * (11000/415)).toFixed(0) + ' V / ' + f.toFixed(1) + ' Hz');
 
-    // Control panel phase bars (simulate ±2% spread between phases)
-    const va = v, vb = v * 0.985, vc = v * 0.992;
+    // Control panel phase bars — use real per-phase values
     updatePhaseBar('a', va); updatePhaseBar('b', vb); updatePhaseBar('c', vc);
     document.getElementById('freq-disp').textContent = f.toFixed(2) + ' Hz';
     document.getElementById('pwr-disp').textContent  = p.toFixed(2) + ' kW';

@@ -173,7 +173,12 @@ const MAX_PTS = 200;
 const xAxisOpts = {
     display: true,
     ticks: {
-        callback: function(val, index) { return index % 20 === 0 ? this.getLabelForValue(val) : ''; },
+        callback: function(val, index) {
+            const total = this.chart.data.labels.length;
+            if (index === total - 1 || index % 10 === 0) return this.getLabelForValue(val);
+            return '';
+        },
+        maxTicksLimit: 25,
         maxRotation: 0,
         font: { size: 9 }
     },

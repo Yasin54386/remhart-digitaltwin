@@ -165,33 +165,33 @@ class SimulationGenerator:
         return data
     
     def calculate_power(self, voltage: Dict, current: Dict, power_factor: float) -> tuple:
-        """Calculate active and reactive power"""
+        """Calculate active and reactive power in kW / kVAR (matching training data units)"""
         phi = math.acos(power_factor)
-        
-        # Active power per phase
-        active_A = voltage["phaseA"] * current["phaseA"] * power_factor
-        active_B = voltage["phaseB"] * current["phaseB"] * power_factor
-        active_C = voltage["phaseC"] * current["phaseC"] * power_factor
-        
-        # Reactive power per phase
-        reactive_A = voltage["phaseA"] * current["phaseA"] * math.sin(phi)
-        reactive_B = voltage["phaseB"] * current["phaseB"] * math.sin(phi)
-        reactive_C = voltage["phaseC"] * current["phaseC"] * math.sin(phi)
-        
+
+        # Active power per phase in kW (divide by 1000 to convert W → kW)
+        active_A = voltage["phaseA"] * current["phaseA"] * power_factor / 1000.0
+        active_B = voltage["phaseB"] * current["phaseB"] * power_factor / 1000.0
+        active_C = voltage["phaseC"] * current["phaseC"] * power_factor / 1000.0
+
+        # Reactive power per phase in kVAR
+        reactive_A = voltage["phaseA"] * current["phaseA"] * math.sin(phi) / 1000.0
+        reactive_B = voltage["phaseB"] * current["phaseB"] * math.sin(phi) / 1000.0
+        reactive_C = voltage["phaseC"] * current["phaseC"] * math.sin(phi) / 1000.0
+
         active_power = {
-            "phaseA": round(active_A, 2),
-            "phaseB": round(active_B, 2),
-            "phaseC": round(active_C, 2),
-            "total": round(active_A + active_B + active_C, 2)
+            "phaseA": round(active_A, 4),
+            "phaseB": round(active_B, 4),
+            "phaseC": round(active_C, 4),
+            "total": round(active_A + active_B + active_C, 4)
         }
-        
+
         reactive_power = {
-            "phaseA": round(reactive_A, 2),
-            "phaseB": round(reactive_B, 2),
-            "phaseC": round(reactive_C, 2),
-            "total": round(reactive_A + reactive_B + reactive_C, 2)
+            "phaseA": round(reactive_A, 4),
+            "phaseB": round(reactive_B, 4),
+            "phaseC": round(reactive_C, 4),
+            "total": round(reactive_A + reactive_B + reactive_C, 4)
         }
-        
+
         return active_power, reactive_power
     
     def generate_datapoint(self, point_index: int, total_points: int, 

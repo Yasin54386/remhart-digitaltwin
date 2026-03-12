@@ -163,47 +163,47 @@ class FrequencyTable(Base):
 class ActivePowerTable(Base):
     """
     3-Phase active (real) power measurements.
-    Measured in Watts (W) or Kilowatts (kW)
+    Stored in Kilowatts (kW) to match ML training data units.
     Active power does actual work in the circuit.
     """
     __tablename__ = 'active_power_table'
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp_id = Column(Integer, ForeignKey('datetime_table.id'), nullable=False, index=True)
-    
-    # Active power per phase in Watts (W)
+
+    # Active power per phase in kW
     phaseA = Column(Float, nullable=False)
     phaseB = Column(Float, nullable=False)
     phaseC = Column(Float, nullable=False)
     total = Column(Float, nullable=False)  # Sum of all phases
-    
+
     timestamp_ref = relationship("DateTimeTable", back_populates="active_power")
 
     def __repr__(self):
-        return f"<ActivePowerTable(id={self.id}, total={self.total}W)>"
+        return f"<ActivePowerTable(id={self.id}, total={self.total}kW)>"
 
 
 class ReactivePowerTable(Base):
     """
     3-Phase reactive power measurements.
-    Measured in Volt-Amperes Reactive (VAR) or kVAR
+    Stored in kVAR to match ML training data units.
     Reactive power maintains voltage levels in the grid.
     """
     __tablename__ = 'reactive_power_table'
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp_id = Column(Integer, ForeignKey('datetime_table.id'), nullable=False, index=True)
-    
-    # Reactive power per phase in VAR
+
+    # Reactive power per phase in kVAR
     phaseA = Column(Float, nullable=False)
     phaseB = Column(Float, nullable=False)
     phaseC = Column(Float, nullable=False)
     total = Column(Float, nullable=False)  # Sum of all phases
-    
+
     timestamp_ref = relationship("DateTimeTable", back_populates="reactive_power")
 
     def __repr__(self):
-        return f"<ReactivePowerTable(id={self.id}, total={self.total}VAR)>"
+        return f"<ReactivePowerTable(id={self.id}, total={self.total}kVAR)>"
 
 
 class User(Base):

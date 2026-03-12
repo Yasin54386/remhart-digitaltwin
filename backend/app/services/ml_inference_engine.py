@@ -65,9 +65,9 @@ class MLInferenceEngine:
                 'energy_flow': self._energy(flat),
                 'decision_making': self._decision(flat),
                 'metadata': {
-                    'timestamp':    data_point.timestamp,
+                    'timestamp':     data_point.timestamp.isoformat() if data_point.timestamp else None,
                     'is_simulation': data_point.is_simulation,
-                    'data_quality': self._data_quality(data_point)
+                    'data_quality':  self._data_quality(data_point)
                 }
             }
 

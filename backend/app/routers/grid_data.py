@@ -15,25 +15,52 @@ Date: 2025
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import List, Optional
 from datetime import datetime, timedelta
 import math
+import asyncio
 
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.models.db_models import (
-    DateTimeTable, VoltageTable, CurrentTable, 
+    DateTimeTable, VoltageTable, CurrentTable,
     FrequencyTable, ActivePowerTable, ReactivePowerTable
 )
 from app.schemas.grid_data import GridDataPoint, GridDataResponse, GridStatus
 from app.utils.security import get_current_user, check_role
 from app.services.data_generator import grid_generator
-from app.routers.websocket_router import manager
+from app.routers.websocket_router import manager, broadcast_new_data, broadcast_ml_predictions
 
 router = APIRouter()
 
 
+
+
+async def _run_ml_and_broadcast(data_id: int, is_simulation: bool):
+    """
+    Background task: load saved record, run 10-model inference, broadcast predictions.
+    Uses its own DB session so it doesn't block the request.
+    """
+    from app.services.ml_inference_engine import ml_inference_engine
+    db = SessionLocal()
+    try:
+        dp = db.query(DateTimeTable).options(
+            joinedload(DateTimeTable.voltage),
+            joinedload(DateTimeTable.current),
+            joinedload(DateTimeTable.frequency),
+            joinedload(DateTimeTable.active_power),
+            joinedload(DateTimeTable.reactive_power),
+        ).filter(DateTimeTable.id == data_id).first()
+
+        if dp:
+            preds = ml_inference_engine.process_data_point(dp)
+            await broadcast_ml_predictions(preds, is_simulation=is_simulation)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"ML background broadcast failed: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/data", response_model=dict)
@@ -43,47 +70,48 @@ async def add_grid_data(
     current_user: dict = Depends(check_role("operator"))
 ):
     """
-    Add new grid data point to database and broadcast to WebSocket clients.
+    Add new grid data point to database.
+    Immediately broadcasts raw data + triggers async ML inference broadcast.
     """
     try:
-        # Create datetime entry
+        # Persist
         dt_entry = DateTimeTable(timestamp=data.timestamp)
         db.add(dt_entry)
         db.flush()
-        
-        # Create related entries
+
         db.add(VoltageTable(timestamp_id=dt_entry.id, **data.voltage.dict()))
         db.add(CurrentTable(timestamp_id=dt_entry.id, **data.current.dict()))
         db.add(FrequencyTable(timestamp_id=dt_entry.id, **data.frequency.dict()))
         db.add(ActivePowerTable(timestamp_id=dt_entry.id, **data.active_power.dict()))
         db.add(ReactivePowerTable(timestamp_id=dt_entry.id, **data.reactive_power.dict()))
-        
+
         db.commit()
-        
-        # Prepare data for broadcast
-        broadcast_data = {
-            "id": dt_entry.id,
-            "timestamp": data.timestamp.isoformat(),
-            "voltage": data.voltage.dict(),
-            "current": data.current.dict(),
-            "frequency": {"value": data.frequency.frequency_value},
-            "active_power": data.active_power.dict(),
-            "reactive_power": data.reactive_power.dict()
-        }
-        
-        # Broadcast to all WebSocket clients immediately
-        await manager.broadcast({
-            "type": "new_data",
-            "data": broadcast_data
+
+        # Determine simulation flag (schema may carry it)
+        is_sim = getattr(data, 'is_simulation', False) or False
+
+        # 1) Broadcast raw grid data immediately
+        await broadcast_new_data({
+            "id":            dt_entry.id,
+            "timestamp":     data.timestamp.isoformat(),
+            "voltage":       data.voltage.dict(),
+            "current":       data.current.dict(),
+            "frequency":     {"value": data.frequency.frequency_value},
+            "active_power":  data.active_power.dict(),
+            "reactive_power": data.reactive_power.dict(),
+            "is_simulation": is_sim,
         })
-        
+
+        # 2) Run ML inference + broadcast predictions in background (non-blocking)
+        asyncio.create_task(_run_ml_and_broadcast(dt_entry.id, is_sim))
+
         return {
-            "success": True,
-            "message": "Grid data added and broadcasted successfully",
-            "data_id": dt_entry.id,
-            "timestamp": dt_entry.timestamp
+            "success":   True,
+            "message":   "Grid data added and broadcasted",
+            "data_id":   dt_entry.id,
+            "timestamp": dt_entry.timestamp.isoformat()
         }
-        
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error adding grid data: {str(e)}")

@@ -1,6 +1,6 @@
 """
 Decision Making ML API
-Provides AI-powered decision support for grid operations
+Models: reactive_q_forecast_model, pf_forecast_model
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -17,252 +17,107 @@ from ..utils.security import get_optional_user
 router = APIRouter(prefix="/api/ml/decision", tags=["ML Decision"])
 
 
+def _load_points(db, is_simulation, hours, limit=500):
+    q = db.query(DateTimeTable).options(
+        joinedload(DateTimeTable.voltage),
+        joinedload(DateTimeTable.current),
+        joinedload(DateTimeTable.frequency),
+        joinedload(DateTimeTable.active_power),
+        joinedload(DateTimeTable.reactive_power),
+    )
+    if hours is not None:
+        q = q.filter(DateTimeTable.timestamp >= datetime.now() - timedelta(hours=hours))
+    if is_simulation is not None:
+        q = q.filter(DateTimeTable.is_simulation == is_simulation)
+    pts = q.order_by(desc(DateTimeTable.timestamp)).limit(limit).all()
+    pts.reverse()
+    return pts
+
+
+def _diag(total, success, errors, skipped):
+    return {
+        "total": total, "success": success, "errors": errors, "skipped": skipped,
+        "success_rate": f"{success/total*100:.1f}%" if total else "0%",
+    }
+
+
 @router.get("/latest")
-async def get_latest_decision_insights(
+async def get_latest(
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    _user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """Get latest decision-making ML insights"""
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    latest = query.order_by(desc(DateTimeTable.timestamp)).first()
-
-    if not latest:
+    pts = _load_points(db, is_simulation, None, 1)
+    if not pts:
         return {"error": "No data available"}
-
-    predictions = ml_inference_engine.process_data_point(latest)
-
+    preds = ml_inference_engine.process_data_point(pts[0])
     return {
-        "timestamp": latest.timestamp,
-        "is_simulation": latest.is_simulation,
-        "insights": predictions['decision_making'],
-        "metadata": predictions['metadata']
+        "timestamp":     pts[0].timestamp,
+        "is_simulation": pts[0].is_simulation,
+        "insights":      preds["decision_making"],
+        "metadata":      preds["metadata"],
     }
 
 
-@router.get("/reactive-power")
-async def get_reactive_power_compensation(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+@router.get("/reactive-q-forecast")
+async def get_reactive_q_forecast(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    _user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get reactive power compensation recommendations
-
-    Returns:
-        Time-series of power factor and compensation requirements
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
-    results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        compensation = predictions['decision_making']['reactive_power_compensation']
-
+    """Time-series reactive power (kVAR) forecast — XGBRegressor."""
+    pts = _load_points(db, is_simulation, hours)
+    results, errors, skipped = [], 0, 0
+    for p in pts:
+        preds = ml_inference_engine.process_data_point(p)
+        if preds.get("error"):
+            errors += 1; continue
+        rq = preds["decision_making"].get("reactive_q_forecast")
+        if not rq:
+            skipped += 1; continue
         results.append({
-            'timestamp': point.timestamp,
-            'current_pf': compensation['current_pf'],
-            'target_pf': compensation['target_pf'],
-            'required_compensation_kvar': compensation['required_compensation_kvar'],
-            'capacitor_size_kvar': compensation['capacitor_size_kvar'],
-            'expected_savings': compensation['expected_savings']
+            "timestamp":           p.timestamp,
+            "predicted_q_kvar":    rq["predicted_q_kvar"],
+            "current_q_kvar":      rq["current_q_kvar"],
+            "trend":               rq["trend"],
+            "compensation_needed": rq["compensation_needed"],
         })
-
     return {
-        "algorithm": "Neural Network Optimizer",
-        "training_dataset": "Power factor correction scenarios targeting 0.95 PF, calculated using power triangle equations",
-        "benefits": "Reduces reactive power charges, improves voltage regulation, increases system capacity",
-        "predictions": results
+        "algorithm":   "XGBoost Regressor",
+        "model_file":  "reactive_q_forecast_model.joblib",
+        "data":        results[-200:],
+        "diagnostics": _diag(len(pts), len(results), errors, skipped),
     }
 
 
-@router.get("/load-balancing")
-async def get_load_balancing_optimization(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
+@router.get("/pf-forecast")
+async def get_pf_forecast(
+    hours: Optional[int] = Query(None),
     is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
+    _user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ):
-    """
-    Get load balancing optimization recommendations
-
-    Returns:
-        Time-series of load distribution and redistribution plans
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
-    results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        balancing = predictions['decision_making']['load_balancing_optimization']
-
-        # Get current phase currents
-        i_a = point.current[0].phaseA if point.current else 0
-        i_b = point.current[0].phaseB if point.current else 0
-        i_c = point.current[0].phaseC if point.current else 0
-
+    """Time-series power factor forecast with compensation advice — XGBRegressor."""
+    pts = _load_points(db, is_simulation, hours)
+    results, errors, skipped = [], 0, 0
+    for p in pts:
+        preds = ml_inference_engine.process_data_point(p)
+        if preds.get("error"):
+            errors += 1; continue
+        pf = preds["decision_making"].get("pf_forecast")
+        if not pf:
+            skipped += 1; continue
         results.append({
-            'timestamp': point.timestamp,
-            'current_distribution': {
-                'phase_a': i_a,
-                'phase_b': i_b,
-                'phase_c': i_c
-            },
-            'current_imbalance': balancing['current_imbalance'],
-            'redistribution_plan': balancing['redistribution_plan'],
-            'expected_improvement_pct': balancing['expected_improvement_pct']
+            "timestamp":                   p.timestamp,
+            "predicted_pf":                pf["predicted_pf"],
+            "current_pf":                  pf["current_pf"],
+            "target_pf":                   pf["target_pf"],
+            "required_compensation_kvar":  pf["required_compensation_kvar"],
         })
-
     return {
-        "algorithm": "Multi-Criteria Decision Analysis (MCDA)",
-        "training_dataset": "Optimization scenarios balancing load distribution, losses, and voltage stability",
-        "benefits": "Reduces neutral current, extends transformer life, improves efficiency",
-        "predictions": results
-    }
-
-
-@router.get("/stability-score")
-async def get_grid_stability_scoring(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
-    is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get grid stability scores
-
-    Returns:
-        Time-series of comprehensive stability scores
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
-    results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        stability = predictions['decision_making']['grid_stability_scoring']
-
-        results.append({
-            'timestamp': point.timestamp,
-            'stability_score': stability['stability_score'],
-            'status': stability['status'],
-            'risk_factors': stability['risk_factors'],
-            'recommendations': stability['recommendations']
-        })
-
-    return {
-        "algorithm": "Ensemble Model (Random Forest + Rule-based)",
-        "training_dataset": "Stability scores calculated from voltage, frequency, power factor, and balance metrics",
-        "benefits": "Provides single metric for grid health, guides operator decisions, prevents blackouts",
-        "predictions": results
-    }
-
-
-@router.get("/optimal-dispatch")
-async def get_optimal_dispatch_advisory(
-    hours: Optional[int] = Query(None, description="Hours of historical data"),
-    is_simulation: Optional[bool] = Query(None),
-    current_user = Depends(get_optional_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get optimal generation dispatch recommendations
-
-    Returns:
-        Time-series of load and recommended generation
-    """
-    query = db.query(DateTimeTable).options(
-        joinedload(DateTimeTable.voltage),
-        joinedload(DateTimeTable.current),
-        joinedload(DateTimeTable.frequency),
-        joinedload(DateTimeTable.active_power),
-        joinedload(DateTimeTable.reactive_power)
-    )
-
-    if hours is not None:
-        since = datetime.now() - timedelta(hours=hours)
-        query = query.filter(DateTimeTable.timestamp >= since)
-
-    if is_simulation is not None:
-        query = query.filter(DateTimeTable.is_simulation == is_simulation)
-
-    data_points = query.order_by(desc(DateTimeTable.timestamp)).limit(500).all()
-    data_points.reverse()
-
-    results = []
-    for point in data_points:
-        predictions = ml_inference_engine.process_data_point(point)
-        dispatch = predictions['decision_making']['optimal_dispatch_advisory']
-
-        results.append({
-            'timestamp': point.timestamp,
-            'current_load_kw': dispatch['current_load_kw'],
-            'recommended_generation_kw': dispatch['recommended_generation_kw'],
-            'reserve_margin_pct': dispatch['reserve_margin_pct'],
-            'dispatch_plan': dispatch['dispatch_plan']
-        })
-
-    return {
-        "algorithm": "SVR (Support Vector Regression)",
-        "training_dataset": "Load patterns with optimal generation including 15% spinning reserve",
-        "benefits": "Optimizes fuel consumption, maintains reliability reserves, reduces generation costs",
-        "predictions": results
+        "algorithm":   "XGBoost Regressor",
+        "model_file":  "pf_forecast_model.joblib",
+        "data":        results[-200:],
+        "diagnostics": _diag(len(pts), len(results), errors, skipped),
     }

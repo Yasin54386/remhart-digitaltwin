@@ -3,863 +3,205 @@
 
 {% block title %}Decision Making - AI/ML Powered{% endblock %}
 
-{% block extra_css %}
-<style>
-    .ml-card {
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(10px);
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        padding: 25px;
-        margin-bottom: 25px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        display: flex;
-        flex-direction: column;
-        min-height: 550px;
-    }
-
-    .ml-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #9b59b6;
-        padding-bottom: 10px;
-        flex-shrink: 0;
-    }
-
-    .ml-card-title {
-        font-size: 18px;
-        font-weight: bold;
-        color: white;
-        flex-grow: 1;
-    }
-
-    .ml-card-content {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-    }
-
-    .ml-card-status {
-        flex-shrink: 0;
-        min-height: 120px;
-        margin-bottom: 15px;
-        color: white;
-    }
-
-    .info-btn {
-        background: #3498db;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: bold;
-        padding: 8px 16px;
-        border-radius: 5px;
-        transition: all 0.3s;
-        color: white;
-    }
-
-    .info-btn:hover {
-        background: #2980b9;
-        transform: scale(1.05);
-    }
-
-    .chart-container {
-        position: relative;
-        height: 300px;
-        margin-top: auto;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        flex-shrink: 0;
-    }
-
-    .metric-box {
-        background: rgba(255, 255, 255, 0.95);
-        color: #333;
-        padding: 12px 15px;
-        border-radius: 8px;
-        margin-top: 10px;
-        font-size: 14px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }
-
-    .metric-box strong {
-        color: #1a8c99;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .status-optimal { background: #2ecc71; color: white; }
-    .status-good { background: #f39c12; color: white; }
-    .status-suboptimal { background: #e74c3c; color: white; }
-
-    /* Grid layout for 2 columns */
-    .graphs-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 25px;
-        margin-bottom: 30px;
-    }
-
-    @media (max-width: 968px) {
-        .graphs-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Modal styles */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-        overflow-y: auto;
-    }
-
-    .modal.show {
-        display: block;
-    }
-
-    .modal-dialog {
-        max-width: 800px;
-        margin: 50px auto;
-        padding: 20px;
-    }
-
-    .modal-content {
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-
-    .modal-header {
-        padding: 20px;
-        border-bottom: 1px solid #dee2e6;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header.bg-purple {
-        background: #9b59b6;
-        color: white;
-    }
-
-    .modal-header.bg-success {
-        background: #2ecc71;
-        color: white;
-    }
-
-    .modal-header.bg-info {
-        background: #3498db;
-        color: white;
-    }
-
-    .modal-title {
-        margin: 0;
-        font-size: 20px;
-    }
-
-    .close {
-        background: none;
-        border: none;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        color: inherit;
-        line-height: 1;
-        padding: 0;
-    }
-
-    .close:hover {
-        opacity: 0.7;
-    }
-
-    .modal-body {
-        padding: 20px;
-    }
-
-    .modal-body h5 {
-        color: #9b59b6;
-        margin-top: 20px;
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-
-    .modal-body h5:first-child {
-        margin-top: 0;
-    }
-
-    .modal-body p {
-        line-height: 1.6;
-        margin-bottom: 15px;
-    }
-
-    .modal-body ul {
-        margin-left: 20px;
-        margin-bottom: 15px;
-    }
-
-    .modal-body ul li {
-        margin-bottom: 8px;
-    }
-
-    .recommendation-list {
-        background: rgba(255, 255, 255, 0.95);
-        color: #333;
-        padding: 12px 15px;
-        border-left: 3px solid #f39c12;
-        margin-top: 10px;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }
-
-    .recommendation-list strong {
-        color: #1a8c99;
-    }
-
-    .recommendation-list li {
-        margin-bottom: 5px;
-        color: #333;
-    }
-
-    .page-header {
-        color: white;
-    }
-
-    .page-header p {
-        color: rgba(255, 255, 255, 0.85);
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="container">
-    <div class="page-header" style="margin-bottom: 30px;">
-        <h2 style="margin-bottom: 10px;">
-            <i class="fas fa-brain"></i> Decision Making - AI/ML Powered
-        </h2>
-        <p>Intelligent decision support using 4 AI/ML models. Automatically displays latest 200 data points.</p>
+<div class="container-fluid py-3">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="mb-0 fw-bold">Decision Making</h4>
+      <small class="text-muted">2 ML models &mdash; reactive_q_forecast_model &bull; pf_forecast_model</small>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <span class="badge bg-secondary" id="wsStatus">Connecting…</span>
+      <span class="text-muted small" id="lastUpdated">—</span>
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" id="simToggle">
+        <label class="form-check-label small" for="simToggle">Simulation</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Reactive Q Forecast -->
+    <div class="col-12 col-xl-6">
+      <div class="card h-100 shadow-sm" id="card-rq">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Reactive Power Forecast (kVAR)</span>
+          <div class="d-flex gap-2">
+            <span class="badge bg-secondary" id="badge-rq">—</span>
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#rqModal">Info</button>
+          </div>
+        </div>
+        <div class="card-body p-2">
+          <div class="row text-center mb-2 g-1">
+            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Current (kVAR)</div><div class="fw-bold" id="rq-current">—</div></div></div>
+            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Predicted (kVAR)</div><div class="fw-bold" id="rq-predicted">—</div></div></div>
+            <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Compensation</div><div class="fw-bold" id="rq-comp">—</div></div></div>
+          </div>
+          <!-- Two datasets: actual vs predicted -->
+          <canvas id="rqChart" height="220"></canvas>
+        </div>
+      </div>
     </div>
 
-    <!-- Row 1: Reactive Power Compensation + Load Balancing -->
-    <div class="graphs-grid">
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-battery-half"></i> Reactive Power Compensation
-                </div>
-                <button class="info-btn" onclick="openModal('compensationInfoModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Power Factor:</span>
-                <span id="currentPF" class="status-badge status-good">0.90</span>
-                <div class="metric-box">
-                    <strong>Target PF:</strong> <span id="targetPF">0.95</span><br>
-                    <strong>Required Compensation:</strong> <span id="reqCompensation">0 kVAR</span>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="compensationChart"></canvas>
-            </div>
+    <!-- Power Factor Forecast -->
+    <div class="col-12 col-xl-6">
+      <div class="card h-100 shadow-sm" id="card-pf">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Power Factor Forecast &amp; Compensation Advice</span>
+          <div class="d-flex gap-2">
+            <span class="badge bg-secondary" id="badge-pf">—</span>
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pfModal">Info</button>
+          </div>
         </div>
-
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-balance-scale"></i> Load Balancing Optimization
-                </div>
-                <button class="info-btn" onclick="openModal('balancingInfoModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Imbalance:</span>
-                <span id="imbalanceStatus" class="status-badge status-optimal">Low</span>
-                <div class="metric-box">
-                    <strong>Current Imbalance:</strong> <span id="currentImbalance">0%</span><br>
-                    <strong>Expected Improvement:</strong> <span id="expectedImprovement">0%</span>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="balancingChart"></canvas>
-            </div>
+        <div class="card-body p-2">
+          <div class="row text-center mb-2 g-1">
+            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Current PF</div><div class="fw-bold" id="pf-current">—</div></div></div>
+            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Predicted PF</div><div class="fw-bold" id="pf-predicted">—</div></div></div>
+            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Target PF</div><div class="fw-bold text-success">0.95</div></div></div>
+            <div class="col-3"><div class="border rounded p-1"><div class="small text-muted">Comp (kVAR)</div><div class="fw-bold" id="pf-comp">—</div></div></div>
+          </div>
+          <!-- Two lines: current PF + predicted PF + threshold at 0.95 -->
+          <canvas id="pfChart" height="220"></canvas>
         </div>
+      </div>
     </div>
 
-    <!-- Row 2: Grid Stability Scoring + Optimal Dispatch -->
-    <div class="graphs-grid">
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-heartbeat"></i> Grid Stability Scoring
-                </div>
-                <button class="info-btn" onclick="openModal('stabilityInfoModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Status:</span>
-                <span id="stabilityStatus" class="status-badge status-optimal">Stable</span>
-                <span style="margin-left: 15px;">Score:</span>
-                <span id="stabilityScore">100</span>
-                <div class="recommendation-list" id="recommendations" style="display:none;">
-                    <strong>Recommendations:</strong>
-                    <ul id="recList"></ul>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="stabilityChart"></canvas>
-            </div>
-        </div>
-
-        <div class="ml-card">
-            <div class="ml-card-header">
-                <div class="ml-card-title">
-                    <i class="fas fa-clipboard-list"></i> Optimal Dispatch Advisory
-                </div>
-                <button class="info-btn" onclick="openModal('dispatchInfoModal')" title="Learn More">
-                    Info
-                </button>
-            </div>
-            <div class="ml-card-status">
-                <span>Reserve Margin:</span>
-                <span id="reserveStatus" class="status-badge status-optimal">Adequate</span>
-                <div class="metric-box">
-                    <strong>Current Load:</strong> <span id="dispatchLoad">0 kW</span><br>
-                    <strong>Recommended Generation:</strong> <span id="recGen">0 kW</span>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="dispatchChart"></canvas>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 
-<!-- Reactive Power Compensation Info Modal -->
-<div class="modal" id="compensationInfoModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-purple">
-                <h5 class="modal-title"><i class="fas fa-battery-half"></i> Reactive Power Compensation</h5>
-                <button class="close" onclick="closeModal('compensationInfoModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model calculates the optimal reactive power compensation needed to achieve target power factor (typically 0.95). It analyzes current power factor, active power, and reactive power to determine exact capacitor bank sizing requirements for power factor correction.</p>
+<!-- Info Modals -->
+<div class="modal fade" id="rqModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Reactive Power Forecast</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <p><strong>Model:</strong> XGBoost Regressor (<code>reactive_q_forecast_model.joblib</code>)</p>
+    <p><strong>Features:</strong> Q_lag_1h, Q_lag_24h, PF_lag_1h, hour_sin/cos, is_workday (+ optional raw measurements)</p>
+    <p><strong>Output:</strong> Predicted next-period reactive power (kVAR); chart compares actual vs predicted</p>
+    <p><strong>Use:</strong> Capacitor bank scheduling, VAR compensation planning, avoiding reactive power penalties</p>
+  </div>
+</div></div></div>
 
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>Neural Network Optimizer</strong> with 3 hidden layers [32, 16, 8 neurons], ReLU activation. Trained on 5,000+ power factor correction scenarios covering various load conditions and power factor ranges.</p>
+<div class="modal fade" id="pfModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Power Factor Forecast</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <p><strong>Model:</strong> XGBoost Regressor (<code>pf_forecast_model.joblib</code>)</p>
+    <p><strong>Features:</strong> Same lag + time features as reactive Q model</p>
+    <p><strong>Output:</strong> Predicted PF [0,1]; calculates required capacitor compensation to reach target PF = 0.95</p>
+    <p><strong>Use:</strong> Proactive power factor correction — schedule capacitors before the PF degrades</p>
+  </div>
+</div></div></div>
 
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>Low PF (0.65-0.80):</strong> Heavy inductive loads, large compensation needed</li>
-                    <li><strong>Medium PF (0.80-0.90):</strong> Typical industrial scenarios, moderate correction</li>
-                    <li><strong>High PF (0.90-0.95):</strong> Well-compensated systems, fine-tuning required</li>
-                    <li><strong>Calculation:</strong> Q_required = P × (tan(arccos(PF_current)) - tan(arccos(PF_target)))</li>
-                    <li><strong>Capacitor Sizing:</strong> Standard ratings (5, 10, 15, 20, 25, 30, 40, 50 kVAR)</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Reduce Utility Penalties:</strong> Avoid power factor charges saving thousands monthly</li>
-                    <li><strong>Improve Voltage Regulation:</strong> Better voltage stability throughout the network</li>
-                    <li><strong>Increase System Capacity:</strong> Free up capacity without infrastructure upgrades</li>
-                    <li><strong>Reduce Losses:</strong> Lower I²R losses in transmission and distribution</li>
-                    <li><strong>Equipment Protection:</strong> Reduce stress on transformers and generators</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Power factor correction follows fundamental power triangle relationships. Low power factor increases current flow for the same active power, causing higher losses and requiring oversized equipment. The model uses IEEE 18-2012 standards for shunt capacitor application, ensuring optimal reactive power compensation while avoiding over-correction and resonance issues. Validated against utility power factor improvement programs.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Load Balancing Info Modal -->
-<div class="modal" id="balancingInfoModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success">
-                <h5 class="modal-title"><i class="fas fa-balance-scale"></i> Load Balancing Optimization</h5>
-                <button class="close" onclick="closeModal('balancingInfoModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model analyzes three-phase load distribution and recommends optimal load redistribution to achieve balanced phase currents. It minimizes phase imbalance, neutral current, and associated losses while considering practical load transfer constraints.</p>
-
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>Multi-Criteria Decision Analysis (MCDA)</strong> combined with Genetic Algorithm optimization. Trained on 5,000+ load balancing scenarios including balanced, moderately unbalanced, and severely unbalanced conditions.</p>
-
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>Balanced Loads:</strong> Phase imbalance < 5%, optimal distribution achieved</li>
-                    <li><strong>Moderate Imbalance:</strong> 5-15% imbalance, requires strategic load transfers</li>
-                    <li><strong>Severe Imbalance:</strong> > 15% imbalance, significant redistribution needed</li>
-                    <li><strong>Optimization Goal:</strong> Minimize max(|Ia - Ib|, |Ib - Ic|, |Ic - Ia|)</li>
-                    <li><strong>Improvement Model:</strong> Expected reduction = 70% of current imbalance</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Reduce Neutral Current:</strong> Minimize neutral conductor stress and losses</li>
-                    <li><strong>Extend Transformer Life:</strong> Eliminate hot-spot heating from unbalanced loads</li>
-                    <li><strong>Improve Efficiency:</strong> Reduce system losses by 2-5% through balancing</li>
-                    <li><strong>Prevent Equipment Derating:</strong> Avoid capacity reduction due to imbalance</li>
-                    <li><strong>Actionable Recommendations:</strong> Specific load transfer instructions for field crews</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Phase imbalance causes negative-sequence currents that produce additional heating, reduce equipment efficiency, and can cause protection misoperation. The model follows IEC 61000-4-30 standards for voltage unbalance measurement and applies optimization theory to minimize imbalance while respecting practical constraints. Field validation shows 3-5% loss reduction and 15-20% neutral current reduction after implementing recommended load transfers.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Grid Stability Info Modal -->
-<div class="modal" id="stabilityInfoModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info">
-                <h5 class="modal-title"><i class="fas fa-heartbeat"></i> Grid Stability Scoring</h5>
-                <button class="close" onclick="closeModal('stabilityInfoModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model computes a comprehensive grid stability score (0-1) by analyzing voltage stability, frequency stability, power factor quality, and phase balance. It identifies specific stability issues and provides prioritized recommendations for corrective actions.</p>
-
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>Ensemble Model (Random Forest + Rule-Based Expert System)</strong> combining machine learning with domain expertise. Trained on 5,000+ grid operating scenarios from stable to critical conditions.</p>
-
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>Voltage Stability (25%):</strong> Normal operation 220-240V, deviations penalized</li>
-                    <li><strong>Frequency Stability (25%):</strong> Target 50Hz ± 0.5Hz, larger deviations reduce score</li>
-                    <li><strong>Power Factor Quality (25%):</strong> Target PF > 0.9, lower values reduce score</li>
-                    <li><strong>Phase Balance (25%):</strong> Imbalance < 8% optimal, higher values penalized</li>
-                    <li><strong>Classification:</strong> Stable (>0.8), Marginal (0.6-0.8), Unstable (<0.6)</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Holistic Health Metric:</strong> Single score summarizing overall grid condition</li>
-                    <li><strong>Early Warning System:</strong> Detect degrading conditions before failures occur</li>
-                    <li><strong>Prioritized Actions:</strong> Recommendations ranked by impact and urgency</li>
-                    <li><strong>Prevent Cascading Failures:</strong> Identify weak points before they propagate</li>
-                    <li><strong>Regulatory Compliance:</strong> Support IEEE 1547 and grid code adherence</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Grid stability depends on multiple interacting factors that cannot be assessed in isolation. The ensemble approach combines Random Forest's pattern recognition with expert rules based on power system stability theory (voltage collapse criteria, frequency nadir limits, etc.). The model is validated against NERC/WECC stability criteria and correctly identifies 94% of unstable conditions in simulation, providing operators with reliable decision support during critical events.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Optimal Dispatch Info Modal -->
-<div class="modal" id="dispatchInfoModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-purple">
-                <h5 class="modal-title"><i class="fas fa-clipboard-list"></i> Optimal Dispatch Advisory</h5>
-                <button class="close" onclick="closeModal('dispatchInfoModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h5><i class="fas fa-question-circle"></i> What does this model do?</h5>
-                <p>This model recommends optimal generation dispatch based on current load, load trends, and reserve requirements. It allocates generation across base-load, intermediate, and peak units to minimize fuel costs while maintaining adequate spinning reserves (typically 15%).</p>
-
-                <h5><i class="fas fa-brain"></i> Algorithm Used</h5>
-                <p><strong>Support Vector Regression (SVR)</strong> with RBF kernel, combined with economic dispatch optimization. Trained on 5,000+ load-generation scenarios covering all operating conditions from minimum to peak load.</p>
-
-                <h5><i class="fas fa-database"></i> Training Dataset Logic</h5>
-                <ul>
-                    <li><strong>Light Load (50-70%):</strong> Primarily base-load units, minimum cycling</li>
-                    <li><strong>Normal Load (70-90%):</strong> Base-load plus intermediate units as needed</li>
-                    <li><strong>Peak Load (90-100%):</strong> All units committed including peaking capacity</li>
-                    <li><strong>Reserve Requirement:</strong> Generation = Load × 1.15 (15% spinning reserve)</li>
-                    <li><strong>Dispatch Strategy:</strong> Merit order - cheapest units first (base 70%, intermediate 20%, peak 10%)</li>
-                </ul>
-
-                <h5><i class="fas fa-lightbulb"></i> Why is this useful for grid operators?</h5>
-                <ul>
-                    <li><strong>Minimize Fuel Costs:</strong> Optimal unit commitment reduces generation costs 10-20%</li>
-                    <li><strong>Maintain Reliability:</strong> Adequate reserves ensure response to contingencies</li>
-                    <li><strong>Reduce Emissions:</strong> Efficient dispatch minimizes environmental impact</li>
-                    <li><strong>Unit Commitment Guidance:</strong> Inform which generators to start/stop</li>
-                    <li><strong>Renewable Integration:</strong> Optimize conventional generation with variable renewables</li>
-                </ul>
-
-                <h5><i class="fas fa-check-circle"></i> Scientific Justification</h5>
-                <p>Economic dispatch is a classical power systems optimization problem balancing cost minimization with reliability constraints. The SVR model learns the complex relationship between load patterns and optimal generation allocation, accounting for unit heat rates, ramp rates, and minimum up/down times. The approach follows IEEE and NERC standards for reserve margins and economic dispatch. Validation against actual utility dispatch data shows 12-18% cost reduction compared to heuristic dispatch methods.</p>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-    // Modal functions
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.add('show');
+const API = 'http://localhost:8001';
+const WS_URL = 'ws://localhost:8001/ws/ml-predictions';
+const MAX_PTS = 200;
+let isSimulation = false, ws = null;
+
+// Reactive Q — two lines: actual + predicted
+const rqChart = new Chart(document.getElementById('rqChart'), {
+  type: 'line',
+  data: { labels: [], datasets: [
+    { label: 'Actual Q (kVAR)', data: [], borderColor: '#2980b9', backgroundColor: '#2980b920', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+    { label: 'Predicted Q (kVAR)', data: [], borderColor: '#e67e22', backgroundColor: '#e67e2220', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+  ]},
+  options: { animation: false, responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: { x: { display: false }, y: { beginAtZero: false } } }
+});
+
+// PF chart — two lines: current + predicted, plus a 0.95 annotation line
+const pfChart = new Chart(document.getElementById('pfChart'), {
+  type: 'line',
+  data: { labels: [], datasets: [
+    { label: 'Current PF', data: [], borderColor: '#27ae60', backgroundColor: '#27ae6020', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+    { label: 'Predicted PF', data: [], borderColor: '#8e44ad', backgroundColor: '#8e44ad20', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+    { label: 'Target PF (0.95)', data: [], borderColor: '#e74c3c', borderWidth: 1, borderDash: [6,3], pointRadius: 0 },
+  ]},
+  options: { animation: false, responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: { x: { display: false }, y: { min: 0.5, max: 1.05 } } }
+});
+
+function push2(chart, ts, v0, v1, target) {
+  chart.data.labels.push(ts);
+  chart.data.datasets[0].data.push(v0);
+  chart.data.datasets[1].data.push(v1);
+  if (chart.data.datasets[2]) chart.data.datasets[2].data.push(target);
+  if (chart.data.labels.length > MAX_PTS) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(ds => ds.data.shift());
+  }
+  chart.update('none');
+}
+
+function applyDecision(dm) {
+  const ts = new Date().toLocaleTimeString();
+
+  const rq = dm.reactive_q_forecast || {};
+  document.getElementById('rq-current').textContent   = rq.current_q_kvar   != null ? rq.current_q_kvar.toFixed(3)   : '—';
+  document.getElementById('rq-predicted').textContent = rq.predicted_q_kvar != null ? rq.predicted_q_kvar.toFixed(3) : '—';
+  document.getElementById('rq-comp').textContent      = rq.compensation_needed ? 'Needed' : 'OK';
+  document.getElementById('rq-comp').className        = 'fw-bold '+(rq.compensation_needed ? 'text-warning' : 'text-success');
+  const rqBadge = document.getElementById('badge-rq');
+  rqBadge.textContent = rq.trend || '—';
+  rqBadge.className = 'badge '+(rq.trend==='increasing' ? 'bg-warning text-dark' : rq.trend==='decreasing' ? 'bg-info text-dark' : 'bg-secondary');
+  push2(rqChart, ts, rq.current_q_kvar||0, rq.predicted_q_kvar||0, null);
+  document.getElementById('card-rq').className = 'card h-100 shadow-sm'+(rq.compensation_needed?' border-warning':'');
+
+  const pf = dm.pf_forecast || {};
+  document.getElementById('pf-current').textContent   = pf.current_pf   != null ? pf.current_pf.toFixed(3)   : '—';
+  document.getElementById('pf-predicted').textContent = pf.predicted_pf != null ? pf.predicted_pf.toFixed(3) : '—';
+  document.getElementById('pf-comp').textContent      = pf.required_compensation_kvar != null ? pf.required_compensation_kvar.toFixed(2)+' kVAR' : '—';
+  const pfBadge = document.getElementById('badge-pf');
+  const pfOk = (pf.predicted_pf||0) >= 0.95;
+  pfBadge.textContent = pfOk ? 'PF OK' : 'Low PF';
+  pfBadge.className = 'badge '+(pfOk ? 'bg-success' : 'bg-danger');
+  push2(pfChart, ts, pf.current_pf||0, pf.predicted_pf||0, 0.95);
+  document.getElementById('card-pf').className = 'card h-100 shadow-sm'+(!pfOk?' border-warning':'');
+}
+
+function getAuthHeader() {
+  const t = localStorage.getItem('access_token');
+  return t ? {Authorization:`Bearer ${t}`} : {};
+}
+
+async function loadHistory() {
+  const sim = isSimulation ? '&is_simulation=true' : '&is_simulation=false';
+  const h = getAuthHeader();
+  try {
+    const [rq, pf] = await Promise.all([
+      fetch(`${API}/api/ml/decision/reactive-q-forecast?limit=200${sim}`, {headers:h}).then(r=>r.json()),
+      fetch(`${API}/api/ml/decision/pf-forecast?limit=200${sim}`, {headers:h}).then(r=>r.json()),
+    ]);
+    rqChart.data.labels=[]; rqChart.data.datasets.forEach(ds=>ds.data=[]);
+    pfChart.data.labels=[]; pfChart.data.datasets.forEach(ds=>ds.data=[]);
+    for (const d of (rq.data||[])) push2(rqChart, new Date(d.timestamp).toLocaleTimeString(), d.current_q_kvar||0, d.predicted_q_kvar||0, null);
+    for (const d of (pf.data||[])) push2(pfChart, new Date(d.timestamp).toLocaleTimeString(), d.current_pf||0, d.predicted_pf||0, 0.95);
+  } catch(e) { console.warn('History load failed', e); }
+}
+
+function connectWS() {
+  const sim = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
+  ws = new WebSocket(`${WS_URL}${sim}`);
+  ws.onopen = () => { document.getElementById('wsStatus').textContent='Live'; document.getElementById('wsStatus').className='badge bg-success'; setInterval(()=>ws.readyState===1&&ws.send('ping'),25000); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type==='initial_predictions'||msg.type==='ml_update') {
+      applyDecision(msg.data?.decision_making||{});
+      document.getElementById('lastUpdated').textContent='Updated: '+new Date().toLocaleTimeString();
     }
+  };
+  ws.onclose = () => { document.getElementById('wsStatus').textContent='Reconnecting…'; document.getElementById('wsStatus').className='badge bg-warning text-dark'; setTimeout(connectWS,3000); };
+  ws.onerror = () => ws.close();
+}
 
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('show');
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.classList.remove('show');
-        }
-    }
-
-    // Use global API_URL from base.html
-    const token = '{{ request.session.access_token }}';
-    let isSimulation = false;
-    let compensationChart, balancingChart, stabilityChart, dispatchChart;
-
-    // Initialize charts
-    function initCharts() {
-        // Reactive Power Compensation Chart
-        const compCtx = document.getElementById('compensationChart').getContext('2d');
-        compensationChart = new Chart(compCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Power Factor',
-                    data: [],
-                    borderColor: '#9b59b6',
-                    backgroundColor: 'rgba(155, 89, 182, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { min: 0.6, max: 1.0, title: { display: true, text: 'Power Factor' } }
-                }
-            }
-        });
-
-        // Load Balancing Chart (Radar for phase distribution)
-        const balCtx = document.getElementById('balancingChart').getContext('2d');
-        balancingChart = new Chart(balCtx, {
-            type: 'radar',
-            data: {
-                labels: ['Phase A', 'Phase B', 'Phase C'],
-                datasets: [{
-                    label: 'Current Distribution (A)',
-                    data: [50, 50, 50],
-                    borderColor: '#9b59b6',
-                    backgroundColor: 'rgba(155, 89, 182, 0.2)',
-                    pointBackgroundColor: '#9b59b6',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#9b59b6'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: { beginAtZero: true, title: { display: true, text: 'Current (A)' } }
-                }
-            }
-        });
-
-        // Grid Stability Chart
-        const stabCtx = document.getElementById('stabilityChart').getContext('2d');
-        stabilityChart = new Chart(stabCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Stability Score',
-                    data: [],
-                    borderColor: '#2ecc71',
-                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { min: 0, max: 1, title: { display: true, text: 'Score (0-1)' } }
-                }
-            }
-        });
-
-        // Optimal Dispatch Chart
-        const dispCtx = document.getElementById('dispatchChart').getContext('2d');
-        dispatchChart = new Chart(dispCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Base Load', 'Intermediate', 'Peak'],
-                datasets: [{
-                    label: 'Recommended Generation (kW)',
-                    data: [0, 0, 0],
-                    backgroundColor: ['#3498db', '#f39c12', '#e74c3c']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Generation (kW)' } }
-                }
-            }
-        });
-    }
-
-    // Fetch and update all visualizations
-    async function updateVisualizations() {
-        try {
-            const params = isSimulation ? '?is_simulation=true' : '?is_simulation=false';
-
-            // Reactive Power Compensation
-            const compResp = await fetch(`${API_URL}/api/ml/decision/reactive-power${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const compData = await compResp.json();
-
-            if (compData.predictions && compData.predictions.length > 0) {
-                const limited = compData.predictions.slice(-200);
-                compensationChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
-                compensationChart.data.datasets[0].data = limited.map(p => p.current_pf);
-                compensationChart.update();
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('currentPF').textContent = latest.current_pf.toFixed(3);
-                document.getElementById('targetPF').textContent = latest.target_pf.toFixed(2);
-                document.getElementById('reqCompensation').textContent = latest.required_compensation_kvar.toFixed(1) + ' kVAR';
-            }
-
-            // Load Balancing
-            const balResp = await fetch(`${API_URL}/api/ml/decision/load-balancing${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const balData = await balResp.json();
-
-            if (balData.predictions && balData.predictions.length > 0) {
-                const latest = balData.predictions[balData.predictions.length - 1];
-                balancingChart.data.datasets[0].data = [
-                    latest.current_distribution.phase_a,
-                    latest.current_distribution.phase_b,
-                    latest.current_distribution.phase_c
-                ];
-                balancingChart.update();
-
-                document.getElementById('currentImbalance').textContent = latest.current_imbalance.toFixed(1) + '%';
-                document.getElementById('expectedImprovement').textContent = latest.expected_improvement_pct.toFixed(1) + '%';
-
-                const imbalanceEl = document.getElementById('imbalanceStatus');
-                if (latest.current_imbalance < 5) {
-                    imbalanceEl.className = 'status-badge status-optimal';
-                    imbalanceEl.textContent = 'Low';
-                } else if (latest.current_imbalance < 15) {
-                    imbalanceEl.className = 'status-badge status-good';
-                    imbalanceEl.textContent = 'Moderate';
-                } else {
-                    imbalanceEl.className = 'status-badge status-suboptimal';
-                    imbalanceEl.textContent = 'High';
-                }
-            }
-
-            // Grid Stability
-            const stabResp = await fetch(`${API_URL}/api/ml/decision/stability-score${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const stabData = await stabResp.json();
-
-            if (stabData.predictions && stabData.predictions.length > 0) {
-                const limited = stabData.predictions.slice(-200);
-                stabilityChart.data.labels = limited.map(p => new Date(p.timestamp).toLocaleTimeString());
-                stabilityChart.data.datasets[0].data = limited.map(p => p.stability_score);
-                stabilityChart.update();
-
-                const latest = limited[limited.length - 1];
-                document.getElementById('stabilityScore').textContent = (latest.stability_score * 100).toFixed(1);
-
-                const statusEl = document.getElementById('stabilityStatus');
-                if (latest.status === 'Stable') {
-                    statusEl.className = 'status-badge status-optimal';
-                } else if (latest.status === 'Marginal') {
-                    statusEl.className = 'status-badge status-good';
-                } else {
-                    statusEl.className = 'status-badge status-suboptimal';
-                }
-                statusEl.textContent = latest.status;
-
-                // Show recommendations if any
-                if (latest.recommendations && latest.recommendations.length > 0) {
-                    document.getElementById('recommendations').style.display = 'block';
-                    const recList = document.getElementById('recList');
-                    recList.innerHTML = latest.recommendations.map(r => `<li>${r}</li>`).join('');
-                } else {
-                    document.getElementById('recommendations').style.display = 'none';
-                }
-            }
-
-            // Optimal Dispatch
-            const dispResp = await fetch(`${API_URL}/api/ml/decision/optimal-dispatch${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const dispData = await dispResp.json();
-
-            if (dispData.predictions && dispData.predictions.length > 0) {
-                const latest = dispData.predictions[dispData.predictions.length - 1];
-                dispatchChart.data.datasets[0].data = [
-                    latest.dispatch_plan.base_load,
-                    latest.dispatch_plan.intermediate,
-                    latest.dispatch_plan.peak
-                ];
-                dispatchChart.update();
-
-                document.getElementById('dispatchLoad').textContent = latest.current_load_kw.toFixed(1) + ' kW';
-                document.getElementById('recGen').textContent = latest.recommended_generation_kw.toFixed(1) + ' kW';
-
-                const reserveEl = document.getElementById('reserveStatus');
-                if (latest.reserve_margin_pct >= 15) {
-                    reserveEl.className = 'status-badge status-optimal';
-                    reserveEl.textContent = 'Adequate';
-                } else if (latest.reserve_margin_pct >= 10) {
-                    reserveEl.className = 'status-badge status-good';
-                    reserveEl.textContent = 'Marginal';
-                } else {
-                    reserveEl.className = 'status-badge status-suboptimal';
-                    reserveEl.textContent = 'Low';
-                }
-            }
-
-        } catch (error) {
-            console.error('Error fetching ML data:', error);
-        }
-    }
-
-    // WebSocket connection for real-time ML predictions
-    let mlWebSocket = null;
-    let reconnectTimeout = null;
-
-    function connectMLWebSocket() {
-        if (mlWebSocket && (mlWebSocket.readyState === WebSocket.OPEN || mlWebSocket.readyState === WebSocket.CONNECTING)) {
-            return;
-        }
-
-        const wsUrl = `${API_URL.replace(/^http/, 'ws')}/ws/ml-predictions?is_simulation=${isSimulation}`;
-
-        console.log('Connecting to ML WebSocket:', wsUrl);
-        mlWebSocket = new WebSocket(wsUrl);
-
-        mlWebSocket.onopen = () => {
-            console.log('ML WebSocket connected - Real-time predictions active');
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
-        };
-
-        mlWebSocket.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-
-                if (message.type === 'initial_predictions' || message.type === 'update' || message.type === 'ml_update') {
-                    updateMLCharts(message.data);
-                }
-            } catch (error) {
-                console.error('Error processing WebSocket message:', error);
-            }
-        };
-
-        mlWebSocket.onerror = (error) => {
-            console.error('ML WebSocket error:', error);
-        };
-
-        mlWebSocket.onclose = () => {
-            console.log('ML WebSocket disconnected - Will reconnect in 5s');
-            mlWebSocket = null;
-            reconnectTimeout = setTimeout(() => connectMLWebSocket(), 5000);
-        };
-    }
-
-    function updateMLCharts(predictions) {
-        if (!predictions || !predictions.decision_making) {
-            console.warn('No decision making data in WebSocket message');
-            return;
-        }
-
-        const decision = predictions.decision_making;
-
-        // Reactive Power Compensation
-        if (decision.reactive_power_compensation) {
-            const comp = decision.reactive_power_compensation;
-            document.getElementById('currentPF').textContent = comp.current_pf.toFixed(3);
-            document.getElementById('targetPF').textContent = comp.target_pf.toFixed(2);
-            document.getElementById('reqCompensation').textContent = comp.required_compensation_kvar.toFixed(1) + ' kVAR';
-        }
-
-        // Load Balancing Optimization
-        if (decision.load_balancing_optimization) {
-            const bal = decision.load_balancing_optimization;
-            document.getElementById('currentImbalance').textContent = bal.current_imbalance_pct.toFixed(1) + '%';
-            document.getElementById('expectedImprovement').textContent = bal.expected_improvement_pct.toFixed(1) + '%';
-        }
-
-        // Grid Stability Scoring
-        if (decision.grid_stability_scoring) {
-            const stab = decision.grid_stability_scoring;
-            document.getElementById('stabilityScore').textContent = (stab.stability_score * 100).toFixed(1);
-        }
-
-        // Optimal Dispatch Advisory
-        if (decision.optimal_dispatch_advisory) {
-            const dispatch = decision.optimal_dispatch_advisory;
-            document.getElementById('dispatchLoad').textContent = dispatch.current_load_kw.toFixed(1) + ' kW';
-            document.getElementById('recGen').textContent = dispatch.recommended_generation_kw.toFixed(1) + ' kW';
-        }
-    }
-
-    // Check simulator mode from global variable
-    function updateSimulatorMode() {
-        isSimulation = isSimulatorMode;
-    }
-
-    // Listen for simulator mode changes
-    document.addEventListener('simulatorModeChanged', (e) => {
-        isSimulation = e.detail.isSimulatorMode;
-        updateVisualizations();
-    });
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        initCharts();
-        updateSimulatorMode();
-        updateVisualizations();
-
-        // Real-time updates via WebSocket (no polling needed) // TODO: Replace with WebSocket for real-time updates
-    });
+document.getElementById('simToggle').addEventListener('change', (e) => { isSimulation=e.target.checked; if(ws)ws.close(); loadHistory().then(connectWS); });
+loadHistory().then(connectWS);
 </script>
 {% endblock %}

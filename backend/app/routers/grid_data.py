@@ -397,19 +397,19 @@ async def generate_test_data_simple(
     request: Request,
     num_points: int = Query(default=3600, ge=1, le=3600),
     scenario: str = Query(default="normal"),
+    is_simulation: bool = Query(default=True),
     db: Session = Depends(get_db)
 ):
     """
-    Continuously stream real-time grid data at 1-second intervals.
-    Broadcasts every point system-wide via WebSocket.
-    Stops when: Stop endpoint is called, client disconnects, or num_points reached.
+    Continuously stream grid data at 1-second intervals, system-wide broadcast.
+    is_simulation=true  → data appears in Simulation mode on all dashboards.
+    is_simulation=false → data appears in Real-time mode on all dashboards.
+    Stops when stop endpoint called, client disconnects, or num_points reached.
     """
     global _stream_active
     _stream_active = True
     count = 0
-    mock_user = {"sub": "system", "user_id": 0, "role": "admin"}
 
-    # Scenario anomaly windows (repeat every 60 points for ongoing streams)
     def should_force_anomaly(n: int) -> bool:
         pos = n % 60
         if scenario == "voltage_sag":      return 20 <= pos <= 30
@@ -427,18 +427,42 @@ async def generate_test_data_simple(
                 force_anomaly=should_force_anomaly(count)
             )
 
-            await add_grid_data(
-                GridDataPoint(
-                    timestamp=dp["timestamp"],
-                    voltage=dp["voltage"],
-                    current=dp["current"],
-                    frequency=dp["frequency"],
-                    active_power=dp["active_power"],
-                    reactive_power=dp["reactive_power"]
-                ),
-                db,
-                mock_user
+            # Persist directly so we can set is_simulation correctly
+            dt_entry = DateTimeTable(
+                timestamp=dp["timestamp"],
+                is_simulation=is_simulation
             )
+            db.add(dt_entry)
+            db.flush()
+
+            v  = dp["voltage"]
+            i  = dp["current"]
+            f  = dp["frequency"]
+            ap = dp["active_power"]
+            rp = dp["reactive_power"]
+
+            db.add(VoltageTable(timestamp_id=dt_entry.id, **v))
+            db.add(CurrentTable(timestamp_id=dt_entry.id, **i))
+            db.add(FrequencyTable(timestamp_id=dt_entry.id, **f))
+            db.add(ActivePowerTable(timestamp_id=dt_entry.id, **ap))
+            db.add(ReactivePowerTable(timestamp_id=dt_entry.id, **rp))
+            db.commit()
+
+            # Broadcast raw grid data to all /ws/grid-data clients
+            await broadcast_new_data({
+                "id":            dt_entry.id,
+                "timestamp":     dt_entry.timestamp.isoformat(),
+                "voltage":       v,
+                "current":       i,
+                "frequency":     {"value": f["frequency_value"]},
+                "active_power":  ap,
+                "reactive_power": rp,
+                "is_simulation": is_simulation,
+            })
+
+            # Trigger ML inference + broadcast to /ws/ml-predictions clients
+            asyncio.create_task(_run_ml_and_broadcast(dt_entry.id, is_simulation))
+
             count += 1
             await asyncio.sleep(1)
 
@@ -449,6 +473,7 @@ async def generate_test_data_simple(
         }
 
     except Exception as e:
+        db.rollback()
         return {"success": False, "error": str(e)}
     finally:
         _stream_active = False
